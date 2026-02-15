@@ -1,0 +1,6 @@
+[submodule "tracefiles/crhissanders-packets"]
+	path = tracefiles/crhissanders-packets
+	url = https://github.com/chrissanders/packets.git
+[submodule "tracefiles/protocol-pcap"]
+	path = tracefiles/protocol-pcap
+	url = https://github.com/luguifang/protocol-pcap.git

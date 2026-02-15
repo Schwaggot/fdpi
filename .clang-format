@@ -1,0 +1,15 @@
+---
+Language: Cpp
+BasedOnStyle: LLVM
+AccessModifierOffset: -4
+AllowShortFunctionsOnASingleLine: Inline
+AlwaysBreakTemplateDeclarations: Yes
+BinPackParameters: false
+ColumnLimit: 90
+ConstructorInitializerAllOnOneLineOrOnePerLine: true
+IndentWidth: 4
+NamespaceIndentation: None
+PointerAlignment: Left
+SpacesInAngles: false
+Standard: c++20
+UseTab: Never
