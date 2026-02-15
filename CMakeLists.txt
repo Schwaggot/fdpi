@@ -5,6 +5,10 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+if(MSVC AND MSVC_VERSION LESS 1940)
+    message(FATAL_ERROR "fdpi requires Visual Studio 2022 17.10+ (MSVC 19.40+) for C++23 support. Detected MSVC version: ${MSVC_VERSION}")
+endif()
+
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
     # in standalone set default settings to ON
     option(FDPI_BUILD_TESTS      "Build unit tests (requires GTest)"       ON)
