@@ -16,7 +16,7 @@ namespace fs = std::filesystem;
 namespace {
 
 std::string readFile(const fs::path& path) {
-    std::ifstream ifs(path);
+    std::ifstream ifs(path, std::ios::binary);
     std::ostringstream ss;
     ss << ifs.rdbuf();
     return ss.str();

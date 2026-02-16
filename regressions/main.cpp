@@ -74,7 +74,7 @@ static void createBaseline(const fs::path& pcapPath) {
     const auto baselinePath = deriveBaselinePath(pcapPath);
     fs::create_directories(baselinePath.parent_path());
 
-    std::ofstream ofs(baselinePath);
+    std::ofstream ofs(baselinePath, std::ios::binary);
     ofs << output;
     std::cout << "  -> " << baselinePath << "\n";
 }

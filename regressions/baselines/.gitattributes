@@ -1,0 +1,3 @@
+# Baseline files may contain binary data from decoded protocol fields.
+# Treat as binary to prevent line-ending conversion across platforms.
+*.txt binary
