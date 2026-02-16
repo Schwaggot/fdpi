@@ -8,6 +8,7 @@ namespace {
 constexpr uint16_t kEtherTypeIPv4 = 0x0800;
 constexpr uint16_t kEtherTypeIPv6 = 0x86DD;
 constexpr uint16_t kEtherTypeARP = 0x0806;
+constexpr uint16_t kEtherTypeRARP = 0x8035;
 constexpr uint16_t kEtherTypeVLAN = 0x8100;
 constexpr uint16_t kEtherTypeQinQ = 0x88A8;
 constexpr uint16_t kEtherTypeMPLS = 0x8847;
@@ -161,6 +162,14 @@ std::expected<Packet, Error> PacketDecoder::decode(std::span<const uint8_t> data
         pkt.layer3 = *arpResult;
         pkt.flowId = buildFlowId(pkt);
         return pkt; // ARP has no L4
+    } else if (etherType == kEtherTypeRARP) {
+        auto rarpResult = decodeRarp(data, offset);
+        if (!rarpResult) {
+            return std::unexpected(rarpResult.error());
+        }
+        pkt.layer3 = *rarpResult;
+        pkt.flowId = buildFlowId(pkt);
+        return pkt; // RARP has no L4
     } else {
         // Unsupported L3 protocol — store remaining as payload
         pkt.payload.assign(data.begin() + static_cast<ptrdiff_t>(offset), data.end());
@@ -249,6 +258,78 @@ std::expected<Packet, Error> PacketDecoder::decode(std::span<const uint8_t> data
             }
             case AppProtocol::QUIC: {
                 if (auto result = decodeQuic(payloadSpan, l7Offset)) {
+                    pkt.layer7 = std::move(*result);
+                }
+                break;
+            }
+            case AppProtocol::FTP: {
+                if (auto result = decodeFtp(payloadSpan, l7Offset)) {
+                    pkt.layer7 = std::move(*result);
+                }
+                break;
+            }
+            case AppProtocol::SSH: {
+                if (auto result = decodeSsh(payloadSpan, l7Offset)) {
+                    pkt.layer7 = std::move(*result);
+                }
+                break;
+            }
+            case AppProtocol::DHCP: {
+                if (auto result = decodeDhcp(payloadSpan, l7Offset)) {
+                    pkt.layer7 = std::move(*result);
+                }
+                break;
+            }
+            case AppProtocol::DHCPv6: {
+                if (auto result = decodeDhcpv6(payloadSpan, l7Offset)) {
+                    pkt.layer7 = std::move(*result);
+                }
+                break;
+            }
+            case AppProtocol::SMTP: {
+                if (auto result = decodeSmtp(payloadSpan, l7Offset)) {
+                    pkt.layer7 = std::move(*result);
+                }
+                break;
+            }
+            case AppProtocol::POP3: {
+                if (auto result = decodePop3(payloadSpan, l7Offset)) {
+                    pkt.layer7 = std::move(*result);
+                }
+                break;
+            }
+            case AppProtocol::IMAP: {
+                if (auto result = decodeImap(payloadSpan, l7Offset)) {
+                    pkt.layer7 = std::move(*result);
+                }
+                break;
+            }
+            case AppProtocol::SNMP: {
+                if (auto result = decodeSnmp(payloadSpan, l7Offset)) {
+                    pkt.layer7 = std::move(*result);
+                }
+                break;
+            }
+            case AppProtocol::RDP: {
+                if (auto result = decodeRdp(payloadSpan, l7Offset)) {
+                    pkt.layer7 = std::move(*result);
+                }
+                break;
+            }
+            case AppProtocol::BGP: {
+                if (auto result = decodeBgp(payloadSpan, l7Offset)) {
+                    pkt.layer7 = std::move(*result);
+                }
+                break;
+            }
+            case AppProtocol::NTP: {
+                if (auto result = decodeNtp(payloadSpan, l7Offset)) {
+                    pkt.layer7 = std::move(*result);
+                }
+                break;
+            }
+            case AppProtocol::LDAP: {
+                if (auto result = decodeLdap(payloadSpan, l7Offset)) {
                     pkt.layer7 = std::move(*result);
                 }
                 break;

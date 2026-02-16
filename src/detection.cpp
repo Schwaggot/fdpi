@@ -72,6 +72,175 @@ struct ProtocolDetectionEngine::Impl {
             }
         }
 
+        // FTP: TCP port 21
+        if (std::holds_alternative<TCP>(packet.layer4)) {
+            if (srcPort == 21 || dstPort == 21) {
+                if (payload.size() >= 4) {
+                    const std::string_view sv(
+                        reinterpret_cast<const char*>(payload.data()),
+                        std::min(payload.size(), static_cast<size_t>(16)));
+                    if (sv.starts_with("220 ") || sv.starts_with("USER ") ||
+                        sv.starts_with("PASS ") || sv.starts_with("QUIT") ||
+                        sv.starts_with("SYST") || sv.starts_with("FEAT")) {
+                        return AppProtocol::FTP;
+                    }
+                }
+            }
+        }
+
+        // SSH: TCP port 22
+        if (std::holds_alternative<TCP>(packet.layer4)) {
+            if (srcPort == 22 || dstPort == 22) {
+                if (payload.size() >= 4) {
+                    const std::string_view sv(
+                        reinterpret_cast<const char*>(payload.data()),
+                        std::min(payload.size(), static_cast<size_t>(8)));
+                    if (sv.starts_with("SSH-")) {
+                        return AppProtocol::SSH;
+                    }
+                }
+            }
+        }
+
+        // SMTP: TCP ports 25, 587
+        if (std::holds_alternative<TCP>(packet.layer4)) {
+            if (srcPort == 25 || dstPort == 25 || srcPort == 587 || dstPort == 587) {
+                if (payload.size() >= 4) {
+                    const std::string_view sv(
+                        reinterpret_cast<const char*>(payload.data()),
+                        std::min(payload.size(), static_cast<size_t>(16)));
+                    if (sv.starts_with("220 ") || sv.starts_with("EHLO ") ||
+                        sv.starts_with("HELO ") || sv.starts_with("MAIL ") ||
+                        sv.starts_with("250 ")) {
+                        return AppProtocol::SMTP;
+                    }
+                }
+            }
+        }
+
+        // POP3: TCP port 110
+        if (std::holds_alternative<TCP>(packet.layer4)) {
+            if (srcPort == 110 || dstPort == 110) {
+                if (payload.size() >= 3) {
+                    const std::string_view sv(
+                        reinterpret_cast<const char*>(payload.data()),
+                        std::min(payload.size(), static_cast<size_t>(16)));
+                    if (sv.starts_with("+OK") || sv.starts_with("-ERR") ||
+                        sv.starts_with("USER") || sv.starts_with("PASS")) {
+                        return AppProtocol::POP3;
+                    }
+                }
+            }
+        }
+
+        // IMAP: TCP port 143
+        if (std::holds_alternative<TCP>(packet.layer4)) {
+            if (srcPort == 143 || dstPort == 143) {
+                if (payload.size() >= 4) {
+                    const std::string_view sv(
+                        reinterpret_cast<const char*>(payload.data()),
+                        std::min(payload.size(), static_cast<size_t>(16)));
+                    if (sv.starts_with("* OK") || sv.starts_with("* BYE") ||
+                        sv.starts_with("* NO")) {
+                        return AppProtocol::IMAP;
+                    }
+                }
+            }
+        }
+
+        // BGP: TCP port 179
+        if (std::holds_alternative<TCP>(packet.layer4)) {
+            if (srcPort == 179 || dstPort == 179) {
+                if (payload.size() >= 19) {
+                    // Check for 16-byte all-0xFF marker
+                    bool validMarker = true;
+                    for (size_t i = 0; i < 16; ++i) {
+                        if (payload[i] != 0xFF) {
+                            validMarker = false;
+                            break;
+                        }
+                    }
+                    if (validMarker) {
+                        return AppProtocol::BGP;
+                    }
+                }
+            }
+        }
+
+        // RDP: TCP port 3389
+        if (std::holds_alternative<TCP>(packet.layer4)) {
+            if (srcPort == 3389 || dstPort == 3389) {
+                if (payload.size() >= 7) {
+                    // TPKT header: version 3 + reserved 0
+                    if (payload[0] == 0x03 && payload[1] == 0x00) {
+                        return AppProtocol::RDP;
+                    }
+                }
+            }
+        }
+
+        // LDAP: TCP port 389
+        if (std::holds_alternative<TCP>(packet.layer4)) {
+            if (srcPort == 389 || dstPort == 389) {
+                if (payload.size() >= 2) {
+                    // ASN.1 SEQUENCE tag
+                    if (payload[0] == 0x30) {
+                        return AppProtocol::LDAP;
+                    }
+                }
+            }
+        }
+
+        // NTP: UDP port 123
+        if (std::holds_alternative<UDP>(packet.layer4)) {
+            if (srcPort == 123 || dstPort == 123) {
+                if (payload.size() >= 48) {
+                    uint8_t version = (payload[0] >> 3) & 0x07;
+                    uint8_t mode = payload[0] & 0x07;
+                    if ((version == 3 || version == 4) && mode >= 1 && mode <= 5) {
+                        return AppProtocol::NTP;
+                    }
+                }
+            }
+        }
+
+        // DHCP: UDP ports 67/68
+        if (std::holds_alternative<UDP>(packet.layer4)) {
+            if (srcPort == 67 || dstPort == 67 || srcPort == 68 || dstPort == 68) {
+                if (payload.size() >= 240) {
+                    // Check DHCP magic cookie at offset 236
+                    if (payload[236] == 0x63 && payload[237] == 0x82 &&
+                        payload[238] == 0x53 && payload[239] == 0x63) {
+                        return AppProtocol::DHCP;
+                    }
+                }
+            }
+        }
+
+        // DHCPv6: UDP ports 546/547
+        if (std::holds_alternative<UDP>(packet.layer4)) {
+            if (srcPort == 546 || dstPort == 546 || srcPort == 547 || dstPort == 547) {
+                if (payload.size() >= 4) {
+                    uint8_t msgType = payload[0];
+                    if (msgType >= 1 && msgType <= 13) {
+                        return AppProtocol::DHCPv6;
+                    }
+                }
+            }
+        }
+
+        // SNMP: UDP ports 161/162
+        if (std::holds_alternative<UDP>(packet.layer4)) {
+            if (srcPort == 161 || dstPort == 161 || srcPort == 162 || dstPort == 162) {
+                if (payload.size() >= 2) {
+                    // ASN.1 SEQUENCE tag
+                    if (payload[0] == 0x30) {
+                        return AppProtocol::SNMP;
+                    }
+                }
+            }
+        }
+
         // Payload-based detection (no port hints)
         if (payload.size() >= 5) {
             const uint8_t ct = payload[0];
@@ -106,6 +275,32 @@ struct ProtocolDetectionEngine::Impl {
                 // QUIC v1 = 0x00000001, QUIC v2 = 0x6b3343cf
                 if (ver == 0x00000001 || ver == 0x6b3343cf || ver == 0xff000000) {
                     return AppProtocol::QUIC;
+                }
+            }
+        }
+
+        // SSH portless detection
+        if (payload.size() >= 4) {
+            const std::string_view sv(reinterpret_cast<const char*>(payload.data()),
+                                      std::min(payload.size(), static_cast<size_t>(8)));
+            if (sv.starts_with("SSH-")) {
+                return AppProtocol::SSH;
+            }
+        }
+
+        // BGP portless detection: 16 bytes of 0xFF + valid type 1-5
+        if (payload.size() >= 19) {
+            bool validMarker = true;
+            for (size_t i = 0; i < 16; ++i) {
+                if (payload[i] != 0xFF) {
+                    validMarker = false;
+                    break;
+                }
+            }
+            if (validMarker) {
+                uint8_t bgpType = payload[18];
+                if (bgpType >= 1 && bgpType <= 5) {
+                    return AppProtocol::BGP;
                 }
             }
         }

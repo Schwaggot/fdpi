@@ -14,6 +14,18 @@ enum class AppProtocol : uint8_t {
     HTTP,
     TLS,
     QUIC,
+    FTP,
+    SSH,
+    DHCP,
+    DHCPv6,
+    SMTP,
+    POP3,
+    IMAP,
+    SNMP,
+    RDP,
+    BGP,
+    NTP,
+    LDAP,
 };
 
 struct FlowId {

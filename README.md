@@ -11,12 +11,13 @@ FDPI operates purely on byte buffers — it does not capture packets itself. The
 
 ## Features
 
-- Layered protocol decoding (L2 → L3 → L4 → L7)
+- Layered protocol decoding (L2 -> L3 -> L4 -> L7)
 - Supported protocols:
-    - Ethernet, VLAN 802.1Q, MPLS
-    - IPv4, IPv6, ARP, GRE
-    - TCP, UDP, ICMP, ICMPv6
-    - DNS, HTTP/1.x, TLS (SNI/ALPN extraction), QUIC
+    - L2: Ethernet, VLAN 802.1Q, MPLS
+    - L3: IPv4, IPv6, ARP, RARP, GRE
+    - L4: TCP, UDP, ICMP, ICMPv6
+    - L7: BGP, DHCP, DHCPv6, DNS, FTP, HTTP/1.x, IMAP, LDAP, NTP, POP3, QUIC, RDP, SMTP, SNMP (v1/v2c/v3), SSH, 
+      TLS (SNI/ALPN extraction)
 - IP defragmentation and TCP stream reassembly
 - Bidirectional flow tracking with timeout-based cleanup
 - Application-layer protocol detection (port hints + payload DPI)
