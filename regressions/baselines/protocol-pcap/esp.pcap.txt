@@ -1,0 +1,16 @@
+--- packet 1 ---
+timestamp=1648622362
+captureLength=166
+wireLength=166
+ethernet.src=34:b3:54:07:ca:55
+ethernet.dst=00:00:00:00:00:01
+ethernet.etherType=0x8100
+vlan.id=3231
+vlan.priority=0
+vlan.etherType=0x8100
+flow.srcIp=0.0.0.0
+flow.dstIp=0.0.0.0
+flow.srcPort=0
+flow.dstPort=0
+flow.protocol=0
+payloadSize=148

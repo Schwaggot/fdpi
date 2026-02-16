@@ -1,0 +1,13 @@
+--- packet 1 ---
+timestamp=1170365864
+captureLength=132
+wireLength=132
+ethernet.src=ff:ff:ff:ff:00:13
+ethernet.dst=80:00:00:00:ff:ff
+ethernet.etherType=0x460b
+flow.srcIp=0.0.0.0
+flow.dstIp=0.0.0.0
+flow.srcPort=0
+flow.dstPort=0
+flow.protocol=0
+payloadSize=118

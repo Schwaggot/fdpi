@@ -1,0 +1,22 @@
+--- packet 1 ---
+timestamp=1418173441
+captureLength=62
+wireLength=62
+ethernet.src=54:75:d0:c9:0b:81
+ethernet.dst=68:a3:c4:f9:49:f6
+ethernet.etherType=0x86dd
+layer3=IPv6
+ipv6.version=6
+ipv6.trafficClass=0
+ipv6.flowLabel=0
+ipv6.payloadLength=8
+ipv6.nextHeader=50
+ipv6.hopLimit=63
+ipv6.src=2001:470:e5bf:1001:8519:2d1f:c57d:fc4f
+ipv6.dst=2001:470:e5bf:dead:7db0:921:a2e9:1c21
+flow.srcIp=2001:470:e5bf:1001:8519:2d1f:c57d:fc4f
+flow.dstIp=2001:470:e5bf:dead:7db0:921:a2e9:1c21
+flow.srcPort=0
+flow.dstPort=0
+flow.protocol=50
+payloadSize=8

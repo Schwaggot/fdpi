@@ -1,0 +1,23 @@
+--- packet 1 ---
+timestamp=1094143913
+captureLength=60
+wireLength=60
+ethernet.src=00:03:47:b7:f2:f5
+ethernet.dst=ff:ff:ff:ff:ff:ff
+ethernet.etherType=0x0806
+layer3=ARP
+arp.hardwareType=1
+arp.protocolType=0x0800
+arp.hardwareSize=6
+arp.protocolSize=4
+arp.opcode=1
+arp.senderMac=00:03:47:b7:f2:f5
+arp.senderIp=24.6.125.19
+arp.targetMac=00:00:00:00:00:00
+arp.targetIp=24.6.125.19
+flow.srcIp=0.0.0.0
+flow.dstIp=0.0.0.0
+flow.srcPort=0
+flow.dstPort=0
+flow.protocol=0
+payloadSize=0

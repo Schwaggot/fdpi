@@ -11,14 +11,16 @@ endif()
 
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
     # in standalone set default settings to ON
-    option(FDPI_BUILD_TESTS      "Build unit tests (requires GTest)"       ON)
-    option(FDPI_BUILD_EXAMPLES   "Build examples (requires fpcap)"         ON)
-    option(FDPI_BUILD_BENCHMARKS "Build benchmarks"                        ON)
+    option(FDPI_BUILD_TESTS "Build unit tests (requires GTest)" ON)
+    option(FDPI_BUILD_EXAMPLES "Build examples (requires fpcap)" ON)
+    option(FDPI_BUILD_BENCHMARKS "Build benchmarks" ON)
+    option(FDPI_BUILD_REGRESSION "Build regression tests (requires GTest + fpcap)" ON)
 else()
     # if used as library set default settings to OFF
-    option(FDPI_BUILD_TESTS      "Build unit tests (requires GTest)"       OFF)
-    option(FDPI_BUILD_EXAMPLES   "Build examples (requires fpcap)"         OFF)
-    option(FDPI_BUILD_BENCHMARKS "Build benchmarks"                        OFF)
+    option(FDPI_BUILD_TESTS "Build unit tests (requires GTest)" OFF)
+    option(FDPI_BUILD_EXAMPLES "Build examples (requires fpcap)" OFF)
+    option(FDPI_BUILD_BENCHMARKS "Build benchmarks" OFF)
+    option(FDPI_BUILD_REGRESSION "Build regression tests (requires GTest + fpcap)" OFF)
 endif()
 
 file(GLOB_RECURSE FDPI_SOURCES CONFIGURE_DEPENDS src/*.cpp)
@@ -49,6 +51,11 @@ endif()
 
 if(FDPI_BUILD_BENCHMARKS)
     add_subdirectory(benchmarks)
+endif()
+
+if(FDPI_BUILD_REGRESSION)
+    enable_testing()
+    add_subdirectory(regressions)
 endif()
 
 # Installation

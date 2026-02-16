@@ -1,0 +1,65 @@
+--- packet 1 ---
+timestamp=1462218642
+captureLength=271
+wireLength=271
+ethernet.src=00:00:10:02:6c:09
+ethernet.dst=00:00:14:00:ee:18
+ethernet.etherType=0xa000
+flow.srcIp=0.0.0.0
+flow.dstIp=0.0.0.0
+flow.srcPort=0
+flow.dstPort=0
+flow.protocol=0
+payloadSize=257
+--- packet 2 ---
+timestamp=1462218642
+captureLength=65
+wireLength=65
+ethernet.src=00:00:10:02:6c:09
+ethernet.dst=00:00:14:00:ee:18
+ethernet.etherType=0xa000
+flow.srcIp=0.0.0.0
+flow.dstIp=0.0.0.0
+flow.srcPort=0
+flow.dstPort=0
+flow.protocol=0
+payloadSize=51
+--- packet 3 ---
+timestamp=1462218642
+captureLength=184
+wireLength=184
+ethernet.src=00:00:10:02:6c:09
+ethernet.dst=00:00:14:00:ee:18
+ethernet.etherType=0xa000
+flow.srcIp=0.0.0.0
+flow.dstIp=0.0.0.0
+flow.srcPort=0
+flow.dstPort=0
+flow.protocol=0
+payloadSize=170
+--- packet 4 ---
+timestamp=1462218642
+captureLength=203
+wireLength=203
+ethernet.src=00:00:10:02:6c:09
+ethernet.dst=00:00:14:00:ee:18
+ethernet.etherType=0xa000
+flow.srcIp=0.0.0.0
+flow.dstIp=0.0.0.0
+flow.srcPort=0
+flow.dstPort=0
+flow.protocol=0
+payloadSize=189
+--- packet 5 ---
+timestamp=1462218642
+captureLength=54
+wireLength=54
+ethernet.src=00:00:10:02:6c:09
+ethernet.dst=00:00:14:00:ee:18
+ethernet.etherType=0xa000
+flow.srcIp=0.0.0.0
+flow.dstIp=0.0.0.0
+flow.srcPort=0
+flow.dstPort=0
+flow.protocol=0
+payloadSize=40
