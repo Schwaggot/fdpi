@@ -273,12 +273,24 @@ void setICMP(Row& row, const fdpi::ICMP& icmp) {
     row[colIndex("icmp.type")] = decStr(icmp.type);
     row[colIndex("icmp.code")] = decStr(icmp.code);
     row[colIndex("icmp.checksum")] = hex16(icmp.checksum);
+    if (icmp.embedded && icmp.embedded->protocol == 17) {
+        row[colIndex("udp.srcport")] = decStr(icmp.embedded->srcPort);
+        row[colIndex("udp.dstport")] = decStr(icmp.embedded->dstPort);
+        row[colIndex("udp.length")] = decStr(icmp.embedded->udpLength);
+        row[colIndex("udp.checksum")] = hex16(icmp.embedded->udpChecksum);
+    }
 }
 
 void setICMPv6(Row& row, const fdpi::ICMPv6& icmp) {
     row[colIndex("icmpv6.type")] = decStr(icmp.type);
     row[colIndex("icmpv6.code")] = decStr(icmp.code);
     row[colIndex("icmpv6.checksum")] = hex16(icmp.checksum);
+    if (icmp.embedded && icmp.embedded->nextHeader == 17) {
+        row[colIndex("udp.srcport")] = decStr(icmp.embedded->srcPort);
+        row[colIndex("udp.dstport")] = decStr(icmp.embedded->dstPort);
+        row[colIndex("udp.length")] = decStr(icmp.embedded->udpLength);
+        row[colIndex("udp.checksum")] = hex16(icmp.embedded->udpChecksum);
+    }
 }
 
 void setDNS(Row& row, const fdpi::DNS& dns) {
