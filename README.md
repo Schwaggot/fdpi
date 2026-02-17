@@ -50,7 +50,7 @@ target_link_libraries(your_target PRIVATE fdpi::fdpi)
 fdpi::PacketDecoder decoder;
 
 // raw packet bytes from any source (fpcap, libpcap, AF_PACKET, ...)
-auto result = decoder.decode({data, length}, timestamp);
+auto result = decoder.decode({data, length});
 if (result) {
     const auto& pkt = result.value();
 
@@ -70,6 +70,11 @@ if (result) {
 
 ### With fpcap
 
+Any struct with `data` and `captureLength` members satisfies the `PacketSource` concept and can be
+passed directly to `decode()`. [fpcap](https://github.com/fpcap/fpcap) packets work out of the box — no
+manual field extraction needed. Optional members like `timestampSeconds`, `timestampMicroseconds`,
+and `dataLinkType` are picked up automatically via `if constexpr`.
+
 ```cpp
 #include <fdpi/fdpi.hpp>
 #include <fpcap/fpcap.hpp>
@@ -78,7 +83,7 @@ fdpi::PacketDecoder decoder;
 
 fpcap::PacketReader reader("capture.pcap");
 for (const auto& fpkt : reader) {
-    auto result = decoder.decode({fpkt.data, fpkt.captureLength}, fpkt.timestampSeconds);
+    auto result = decoder.decode(fpkt);
     if (!result) continue;
 
     const auto& pkt = result.value();
@@ -88,6 +93,38 @@ for (const auto& fpkt : reader) {
 // access flow statistics
 std::cout << "Total flows: " << decoder.flows().size() << "\n";
 ```
+
+### With libpcap
+
+For libpcap, construct a `Timestamp` from the `pcap_pkthdr` timeval and pass the raw buffer directly:
+
+```cpp
+#include <fdpi/fdpi.hpp>
+#include <pcap/pcap.h>
+
+char errbuf[PCAP_ERRBUF_SIZE];
+pcap_t* handle = pcap_open_offline("capture.pcap", errbuf);
+auto dlt = static_cast<fdpi::DataLinkType>(pcap_datalink(handle));
+
+fdpi::PacketDecoder decoder;
+
+struct pcap_pkthdr* header;
+const u_char* data;
+while (pcap_next_ex(handle, &header, &data) == 1) {
+    auto ts = fdpi::Timestamp{std::chrono::seconds{header->ts.tv_sec}} +
+              std::chrono::microseconds{header->ts.tv_usec};
+
+    auto result = decoder.decode({data, header->caplen}, ts, dlt);
+    if (!result) continue;
+
+    const auto& pkt = result.value();
+    // process decoded packet...
+}
+
+pcap_close(handle);
+```
+
+See `examples/` for complete working examples using both fpcap and libpcap.
 
 ### Multi-Threaded Processing
 
@@ -110,7 +147,7 @@ processor.setHandler(std::make_shared<MyHandler>());
 processor.start();
 
 // submit packets from any source
-processor.submit({data, length}, timestamp);
+processor.submit({data, length});
 
 processor.flush();
 processor.stop();
