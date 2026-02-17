@@ -90,7 +90,7 @@ std::expected<Packet, Error> PacketDecoder::decode(std::span<const uint8_t> data
     uint16_t etherType = ethResult->etherType;
 
     // Handle VLAN tags
-    if (etherType == kEtherTypeVLAN || etherType == kEtherTypeQinQ) {
+    while (etherType == kEtherTypeVLAN || etherType == kEtherTypeQinQ) {
         auto vlanResult = decodeVlan(data, offset);
         if (!vlanResult) {
             return std::unexpected(vlanResult.error());
