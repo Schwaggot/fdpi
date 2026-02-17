@@ -370,6 +370,17 @@ def compare_pcap(pcap_path, verbose=False):
             if not tnorm and not fnorm:
                 continue
 
+            # tshark reports ip.version=6 on IPv6 packets; fdpi correctly
+            # leaves ip.version empty and uses ipv6.version instead. Skip
+            # ip.version when ipv6.version is present on either side.
+            if col == "ip.version":
+                tv6 = normalize_value("ipv6.version",
+                                      trow.get("ipv6.version", ""))
+                fv6 = normalize_value("ipv6.version",
+                                      frow.get("ipv6.version", ""))
+                if tv6 or fv6:
+                    continue
+
             total_fields += 1
             field_stats[col]["total"] += 1
 
