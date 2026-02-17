@@ -55,6 +55,11 @@ std::expected<uint16_t, Error> decodeLlcSnap(std::span<const uint8_t> data,
     return etherType;
 }
 
+uint32_t byteSwap32(uint32_t val) {
+    return ((val & 0xFF000000) >> 24) | ((val & 0x00FF0000) >> 8) |
+           ((val & 0x0000FF00) << 8) | ((val & 0x000000FF) << 24);
+}
+
 // --- DLT_NULL: BSD loopback ---
 std::expected<LinkLayerResult, Error> decodeBsdNull(std::span<const uint8_t> data,
                                                     size_t& offset) {
@@ -64,6 +69,13 @@ std::expected<LinkLayerResult, Error> decodeBsdNull(std::span<const uint8_t> dat
     }
     uint32_t af = read32Native(data.data() + offset);
     offset += kHeaderSize;
+
+    // DLT_NULL stores AF in host byte order of the capturing machine.
+    // If the value exceeds 255, the pcap was captured on a machine with
+    // different endianness — byte-swap to recover the original AF value.
+    if (af > 0xFF) {
+        af = byteSwap32(af);
+    }
 
     LinkLayerResult result{};
     if (af == kAF_INET) {

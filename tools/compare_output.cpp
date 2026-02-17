@@ -139,6 +139,7 @@ const std::vector<std::string> COLUMNS = {
     "imap.request.command",
     // SNMP
     "snmp.version",
+    "snmp.msgVersion",
     "snmp.community",
     // NTP
     "ntp.flags.li",
@@ -399,7 +400,12 @@ void setIMAP(Row& row, const fdpi::IMAP& imap) {
 }
 
 void setSNMP(Row& row, const fdpi::SNMP& snmp) {
-    row[colIndex("snmp.version")] = decStr(snmp.version);
+    // tshark uses snmp.version for v1/v2c but snmp.msgVersion for v3
+    if (snmp.version <= 1) {
+        row[colIndex("snmp.version")] = decStr(snmp.version);
+    } else {
+        row[colIndex("snmp.msgVersion")] = decStr(snmp.version);
+    }
     if (snmp.community) {
         row[colIndex("snmp.community")] = *snmp.community;
     }

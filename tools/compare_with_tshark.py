@@ -88,7 +88,7 @@ COLUMNS = [
     # IMAP
     "imap.request_tag", "imap.request.command",
     # SNMP
-    "snmp.version", "snmp.community",
+    "snmp.version", "snmp.msgVersion", "snmp.community",
     # NTP
     "ntp.flags.li", "ntp.flags.vn", "ntp.flags.mode", "ntp.stratum",
     # BGP
