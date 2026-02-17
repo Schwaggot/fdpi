@@ -1,8 +1,10 @@
 #include <gtest/gtest.h>
 
 #include <fdpi/decoder.hpp>
+#include <fdpi/protocol/pop3.hpp>
 
 #include <chrono>
+#include <string>
 #include <vector>
 
 // Build a complete Ethernet + IPv4 + TCP packet
@@ -779,4 +781,266 @@ TEST(PacketDecoder, VxlanInnerDecode) {
     EXPECT_EQ(tcp->srcPort, 49152);
     EXPECT_EQ(tcp->dstPort, 443);
     EXPECT_TRUE(tcp->syn());
+}
+
+// Build Ethernet + IPv4 + TCP + payload
+static std::vector<uint8_t> buildTcpPacketWithPayload(uint32_t srcIp,
+                                                       uint32_t dstIp,
+                                                       uint16_t srcPort,
+                                                       uint16_t dstPort,
+                                                       const std::string& payload,
+                                                       uint8_t tcpFlags = 0x18 // PSH|ACK
+) {
+    std::vector<uint8_t> packet;
+
+    // Ethernet header (14 bytes)
+    packet.insert(packet.end(), {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF});
+    packet.insert(packet.end(), {0x00, 0x11, 0x22, 0x33, 0x44, 0x55});
+    packet.push_back(0x08);
+    packet.push_back(0x00);
+
+    // IPv4 header (20 bytes)
+    packet.push_back(0x45);
+    packet.push_back(0x00);
+    uint16_t totalLen =
+        static_cast<uint16_t>(20 + 20 + payload.size());
+    packet.push_back(static_cast<uint8_t>(totalLen >> 8));
+    packet.push_back(static_cast<uint8_t>(totalLen & 0xFF));
+    packet.push_back(0x00);
+    packet.push_back(0x01);
+    packet.push_back(0x40);
+    packet.push_back(0x00);
+    packet.push_back(0x40);
+    packet.push_back(0x06); // TCP
+    packet.push_back(0x00);
+    packet.push_back(0x00);
+    packet.push_back(static_cast<uint8_t>((srcIp >> 24) & 0xFF));
+    packet.push_back(static_cast<uint8_t>((srcIp >> 16) & 0xFF));
+    packet.push_back(static_cast<uint8_t>((srcIp >> 8) & 0xFF));
+    packet.push_back(static_cast<uint8_t>(srcIp & 0xFF));
+    packet.push_back(static_cast<uint8_t>((dstIp >> 24) & 0xFF));
+    packet.push_back(static_cast<uint8_t>((dstIp >> 16) & 0xFF));
+    packet.push_back(static_cast<uint8_t>((dstIp >> 8) & 0xFF));
+    packet.push_back(static_cast<uint8_t>(dstIp & 0xFF));
+
+    // TCP header (20 bytes)
+    packet.push_back(static_cast<uint8_t>(srcPort >> 8));
+    packet.push_back(static_cast<uint8_t>(srcPort & 0xFF));
+    packet.push_back(static_cast<uint8_t>(dstPort >> 8));
+    packet.push_back(static_cast<uint8_t>(dstPort & 0xFF));
+    packet.push_back(0x00);
+    packet.push_back(0x00);
+    packet.push_back(0x03);
+    packet.push_back(0xE8);
+    packet.push_back(0x00);
+    packet.push_back(0x00);
+    packet.push_back(0x00);
+    packet.push_back(0x00);
+    packet.push_back(0x50);
+    packet.push_back(tcpFlags);
+    packet.push_back(0xFF);
+    packet.push_back(0xFF);
+    packet.push_back(0x00);
+    packet.push_back(0x00);
+    packet.push_back(0x00);
+    packet.push_back(0x00);
+
+    // Payload
+    for (char c : payload) {
+        packet.push_back(static_cast<uint8_t>(c));
+    }
+
+    return packet;
+}
+
+// POP3 addresses: server=10.0.0.1:110, client=192.168.1.1:50000
+constexpr uint32_t kPop3Server = 0x0A000001;
+constexpr uint32_t kPop3Client = 0xC0A80101;
+constexpr uint16_t kPop3ServerPort = 110;
+constexpr uint16_t kPop3ClientPort = 50000;
+
+TEST(PacketDecoder, Pop3RetrMultilineSkipsDataPackets) {
+    fdpi::PacketDecoder decoder;
+
+    // Server greeting (establishes server→client detection)
+    auto greeting = buildTcpPacketWithPayload(
+        kPop3Server, kPop3Client, kPop3ServerPort, kPop3ClientPort,
+        "+OK POP3 server ready\r\n");
+    auto r1 = decoder.decode(greeting);
+    ASSERT_TRUE(r1.has_value());
+    ASSERT_TRUE(std::holds_alternative<fdpi::POP3>(r1->layer7));
+
+    // USER command (establishes client→server detection)
+    auto user = buildTcpPacketWithPayload(
+        kPop3Client, kPop3Server, kPop3ClientPort, kPop3ServerPort,
+        "USER test\r\n");
+    decoder.decode(user);
+    decoder.decode(buildTcpPacketWithPayload(
+        kPop3Server, kPop3Client, kPop3ServerPort, kPop3ClientPort,
+        "+OK\r\n"));
+
+    // Client: RETR 1
+    auto retr = buildTcpPacketWithPayload(
+        kPop3Client, kPop3Server, kPop3ClientPort, kPop3ServerPort,
+        "RETR 1\r\n");
+    auto r2 = decoder.decode(retr);
+    ASSERT_TRUE(r2.has_value());
+    auto* cmd = std::get_if<fdpi::POP3>(&r2->layer7);
+    ASSERT_NE(cmd, nullptr);
+    EXPECT_EQ(cmd->command, "RETR");
+
+    // Server: +OK (enters data mode)
+    auto ok = buildTcpPacketWithPayload(
+        kPop3Server, kPop3Client, kPop3ServerPort, kPop3ClientPort,
+        "+OK 1234 octets\r\n");
+    auto r3 = decoder.decode(ok);
+    ASSERT_TRUE(r3.has_value());
+    ASSERT_TRUE(std::holds_alternative<fdpi::POP3>(r3->layer7));
+
+    // Data packet — should be suppressed (monostate)
+    auto data = buildTcpPacketWithPayload(
+        kPop3Server, kPop3Client, kPop3ServerPort, kPop3ClientPort,
+        "From: user@example.com\r\nSubject: Test\r\n");
+    auto r4 = decoder.decode(data);
+    ASSERT_TRUE(r4.has_value());
+    EXPECT_TRUE(std::holds_alternative<std::monostate>(r4->layer7));
+
+    // Terminator
+    auto term = buildTcpPacketWithPayload(
+        kPop3Server, kPop3Client, kPop3ServerPort, kPop3ClientPort,
+        ".\r\n");
+    auto r5 = decoder.decode(term);
+    ASSERT_TRUE(r5.has_value());
+    EXPECT_TRUE(std::holds_alternative<std::monostate>(r5->layer7));
+
+    // After terminator, QUIT should decode normally
+    auto quit = buildTcpPacketWithPayload(
+        kPop3Client, kPop3Server, kPop3ClientPort, kPop3ServerPort,
+        "QUIT\r\n");
+    auto r6 = decoder.decode(quit);
+    ASSERT_TRUE(r6.has_value());
+    auto* quitCmd = std::get_if<fdpi::POP3>(&r6->layer7);
+    ASSERT_NE(quitCmd, nullptr);
+    EXPECT_EQ(quitCmd->command, "QUIT");
+}
+
+TEST(PacketDecoder, Pop3RetrErrDoesNotEnterDataMode) {
+    fdpi::PacketDecoder decoder;
+
+    // Server greeting
+    decoder.decode(buildTcpPacketWithPayload(
+        kPop3Server, kPop3Client, kPop3ServerPort, kPop3ClientPort,
+        "+OK POP3 server ready\r\n"));
+    // USER command (establishes client→server detection)
+    decoder.decode(buildTcpPacketWithPayload(
+        kPop3Client, kPop3Server, kPop3ClientPort, kPop3ServerPort,
+        "USER test\r\n"));
+    decoder.decode(buildTcpPacketWithPayload(
+        kPop3Server, kPop3Client, kPop3ServerPort, kPop3ClientPort,
+        "+OK\r\n"));
+
+    // Client: RETR 999
+    decoder.decode(buildTcpPacketWithPayload(
+        kPop3Client, kPop3Server, kPop3ClientPort, kPop3ServerPort,
+        "RETR 999\r\n"));
+
+    // Server: -ERR (should NOT enter data mode)
+    auto err = buildTcpPacketWithPayload(
+        kPop3Server, kPop3Client, kPop3ServerPort, kPop3ClientPort,
+        "-ERR no such message\r\n");
+    auto r = decoder.decode(err);
+    ASSERT_TRUE(r.has_value());
+    auto* resp = std::get_if<fdpi::POP3>(&r->layer7);
+    ASSERT_NE(resp, nullptr);
+    EXPECT_FALSE(resp->success);
+
+    // Next server packet should still decode as POP3
+    auto next = buildTcpPacketWithPayload(
+        kPop3Server, kPop3Client, kPop3ServerPort, kPop3ClientPort,
+        "+OK 0 messages\r\n");
+    auto r2 = decoder.decode(next);
+    ASSERT_TRUE(r2.has_value());
+    EXPECT_TRUE(std::holds_alternative<fdpi::POP3>(r2->layer7));
+}
+
+TEST(PacketDecoder, Pop3ListNoArgMultiline) {
+    fdpi::PacketDecoder decoder;
+
+    // Server greeting + USER to establish both flow directions
+    decoder.decode(buildTcpPacketWithPayload(
+        kPop3Server, kPop3Client, kPop3ServerPort, kPop3ClientPort,
+        "+OK POP3 server ready\r\n"));
+    decoder.decode(buildTcpPacketWithPayload(
+        kPop3Client, kPop3Server, kPop3ClientPort, kPop3ServerPort,
+        "USER test\r\n"));
+    decoder.decode(buildTcpPacketWithPayload(
+        kPop3Server, kPop3Client, kPop3ServerPort, kPop3ClientPort,
+        "+OK\r\n"));
+
+    // Client: LIST (no argument — multi-line)
+    auto list = buildTcpPacketWithPayload(
+        kPop3Client, kPop3Server, kPop3ClientPort, kPop3ServerPort,
+        "LIST\r\n");
+    auto r = decoder.decode(list);
+    ASSERT_TRUE(r.has_value());
+    auto* cmd = std::get_if<fdpi::POP3>(&r->layer7);
+    ASSERT_NE(cmd, nullptr);
+    EXPECT_EQ(cmd->command, "LIST");
+
+    // Server: +OK
+    auto ok = buildTcpPacketWithPayload(
+        kPop3Server, kPop3Client, kPop3ServerPort, kPop3ClientPort,
+        "+OK\r\n");
+    decoder.decode(ok);
+
+    // Data line — suppressed
+    auto data = buildTcpPacketWithPayload(
+        kPop3Server, kPop3Client, kPop3ServerPort, kPop3ClientPort,
+        "1 1234\r\n2 5678\r\n.\r\n");
+    auto r2 = decoder.decode(data);
+    ASSERT_TRUE(r2.has_value());
+    EXPECT_TRUE(std::holds_alternative<std::monostate>(r2->layer7));
+}
+
+TEST(PacketDecoder, Pop3ListWithArgSingleLine) {
+    fdpi::PacketDecoder decoder;
+
+    // Server greeting + USER to establish both flow directions
+    decoder.decode(buildTcpPacketWithPayload(
+        kPop3Server, kPop3Client, kPop3ServerPort, kPop3ClientPort,
+        "+OK POP3 server ready\r\n"));
+    decoder.decode(buildTcpPacketWithPayload(
+        kPop3Client, kPop3Server, kPop3ClientPort, kPop3ServerPort,
+        "USER test\r\n"));
+    decoder.decode(buildTcpPacketWithPayload(
+        kPop3Server, kPop3Client, kPop3ServerPort, kPop3ClientPort,
+        "+OK\r\n"));
+
+    // Client: LIST 1 (with argument — single-line response)
+    auto list = buildTcpPacketWithPayload(
+        kPop3Client, kPop3Server, kPop3ClientPort, kPop3ServerPort,
+        "LIST 1\r\n");
+    auto r = decoder.decode(list);
+    ASSERT_TRUE(r.has_value());
+    auto* cmd = std::get_if<fdpi::POP3>(&r->layer7);
+    ASSERT_NE(cmd, nullptr);
+    EXPECT_EQ(cmd->command, "LIST");
+
+    // Server: +OK 1 1234 (should NOT enter data mode)
+    auto ok = buildTcpPacketWithPayload(
+        kPop3Server, kPop3Client, kPop3ServerPort, kPop3ClientPort,
+        "+OK 1 1234\r\n");
+    auto r2 = decoder.decode(ok);
+    ASSERT_TRUE(r2.has_value());
+    auto* resp = std::get_if<fdpi::POP3>(&r2->layer7);
+    ASSERT_NE(resp, nullptr);
+    EXPECT_TRUE(resp->success);
+
+    // Next server packet should still decode as POP3 (not suppressed)
+    auto next = buildTcpPacketWithPayload(
+        kPop3Server, kPop3Client, kPop3ServerPort, kPop3ClientPort,
+        "+OK bye\r\n");
+    auto r3 = decoder.decode(next);
+    ASSERT_TRUE(r3.has_value());
+    EXPECT_TRUE(std::holds_alternative<fdpi::POP3>(r3->layer7));
 }

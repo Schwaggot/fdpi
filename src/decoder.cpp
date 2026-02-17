@@ -1,6 +1,9 @@
 #include <fdpi/datalink.hpp>
 #include <fdpi/decoder.hpp>
 
+#include <string_view>
+#include <unordered_map>
+
 namespace fdpi {
 
 namespace {
@@ -48,7 +51,22 @@ FlowId buildFlowId(const Packet& pkt) {
     return id;
 }
 
+FlowId reverseFlowId(const FlowId& id) {
+    FlowId rev;
+    rev.srcIp = id.dstIp;
+    rev.dstIp = id.srcIp;
+    rev.srcPort = id.dstPort;
+    rev.dstPort = id.srcPort;
+    rev.protocol = id.protocol;
+    return rev;
+}
+
 } // anonymous namespace
+
+struct Pop3FlowState {
+    bool pendingMultiline = false;
+    bool inDataMode = false;
+};
 
 struct PacketDecoder::Impl {
     Config config;
@@ -56,6 +74,7 @@ struct PacketDecoder::Impl {
     IpDefragmenter defragmenter;
     TcpReassembler reassembler;
     ProtocolDetectionEngine detector;
+    std::unordered_map<FlowId, Pop3FlowState, FlowIdHash> pop3States;
 
     explicit Impl(const Config& cfg)
         : config(cfg),
@@ -427,8 +446,40 @@ std::expected<Packet, Error> PacketDecoder::decode(std::span<const uint8_t> data
                 break;
             }
             case AppProtocol::POP3: {
-                if (auto result = decodePop3(payloadSpan, l7Offset)) {
-                    pkt.layer7 = std::move(*result);
+                auto& state = mImpl->pop3States[pkt.flowId];
+
+                if (state.inDataMode) {
+                    std::string_view sv(
+                        reinterpret_cast<const char*>(payloadSpan.data()),
+                        payloadSpan.size());
+                    if (sv.starts_with(".\r\n") ||
+                        sv.find("\r\n.\r\n") != std::string_view::npos) {
+                        state.inDataMode = false;
+                    }
+                    break;
+                }
+
+                auto result = decodePop3(payloadSpan, l7Offset);
+                if (!result)
+                    break;
+                pkt.layer7 = std::move(*result);
+
+                auto& pop3 = std::get<POP3>(pkt.layer7);
+                if (!pop3.isResponse) {
+                    bool multiline =
+                        (pop3.command == "RETR" || pop3.command == "TOP") ||
+                        ((pop3.command == "LIST" ||
+                          pop3.command == "UIDL") &&
+                         pop3.argument.empty());
+                    if (multiline) {
+                        auto rev = reverseFlowId(pkt.flowId);
+                        mImpl->pop3States[rev].pendingMultiline = true;
+                    }
+                } else if (state.pendingMultiline) {
+                    state.pendingMultiline = false;
+                    if (pop3.success) {
+                        state.inDataMode = true;
+                    }
                 }
                 break;
             }
