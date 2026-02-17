@@ -331,25 +331,33 @@ def compare_pcap(pcap_path, verbose=False):
 
     fdpi_rows = parse_tsv(fdpi_text)
 
-    # Compare packet by packet
+    # Build frame.number → row dicts for alignment
+    tshark_by_frame = {}
+    for row in tshark_rows:
+        fn = row.get("frame.number", "").strip()
+        if fn:
+            tshark_by_frame[fn] = row
+
+    fdpi_by_frame = {}
+    for row in fdpi_rows:
+        fn = row.get("frame.number", "").strip()
+        if fn:
+            fdpi_by_frame[fn] = row
+
+    # Find shared frame numbers (preserve order from tshark)
+    shared_frames = [fn for fn in tshark_by_frame if fn in fdpi_by_frame]
+    fdpi_only = set(fdpi_by_frame) - set(tshark_by_frame)
+    tshark_only = set(tshark_by_frame) - set(fdpi_by_frame)
+
+    # Compare only shared frames
     total_fields = 0
     matches = 0
     mismatches = []
     field_stats = defaultdict(lambda: {"match": 0, "mismatch": 0, "total": 0})
-    packets_total = max(len(tshark_rows), len(fdpi_rows))
-    packets_compared = min(len(tshark_rows), len(fdpi_rows))
 
-    if len(tshark_rows) != len(fdpi_rows):
-        mismatches.append({
-            "packet": 0,
-            "field": "_packet_count",
-            "fdpi": str(len(fdpi_rows)),
-            "tshark": str(len(tshark_rows)),
-        })
-
-    for pkt_idx in range(packets_compared):
-        trow = tshark_rows[pkt_idx]
-        frow = fdpi_rows[pkt_idx]
+    for fn in shared_frames:
+        trow = tshark_by_frame[fn]
+        frow = fdpi_by_frame[fn]
 
         for col in COLUMNS:
             tval = trow.get(col, "")
@@ -371,7 +379,7 @@ def compare_pcap(pcap_path, verbose=False):
             else:
                 field_stats[col]["mismatch"] += 1
                 mismatches.append({
-                    "packet": pkt_idx + 1,
+                    "packet": int(fn),
                     "field": col,
                     "fdpi": fval.strip(),
                     "tshark": tval.strip(),
@@ -380,8 +388,9 @@ def compare_pcap(pcap_path, verbose=False):
     return {
         "status": "compared",
         "file": pcap_path.name,
-        "packets_total": packets_total,
-        "packets_compared": packets_compared,
+        "packets_matched": len(shared_frames),
+        "fdpi_only_packets": len(fdpi_only),
+        "tshark_only_packets": len(tshark_only),
         "total_fields": total_fields,
         "matches": matches,
         "mismatches": mismatches,
@@ -453,8 +462,9 @@ def cmd_compare(args):
         n_mismatch = len(r["mismatches"])
 
         print(f"\n=== {r['file']} ===")
-        print(f"Packets: {r['packets_compared']} compared"
-              f" (of {r['packets_total']} total)")
+        print(f"Packets: {r['packets_matched']} matched"
+              f", {r['fdpi_only_packets']} fdpi-only"
+              f", {r['tshark_only_packets']} tshark-only")
         print(f"Fields compared: {r['total_fields']}")
         print(f"Matches: {r['matches']} ({pct:.1f}%)")
         print(f"Mismatches: {n_mismatch}")

@@ -12,73 +12,146 @@ namespace {
 // Column names matching tshark -e field names
 const std::vector<std::string> COLUMNS = {
     // Frame
-    "frame.number", "frame.len", "frame.cap_len",
+    "frame.number",
+    "frame.len",
+    "frame.cap_len",
     // Ethernet
-    "eth.src", "eth.dst", "eth.type",
+    "eth.src",
+    "eth.dst",
+    "eth.type",
     // IPv4
-    "ip.version", "ip.hdr_len", "ip.dsfield.dscp", "ip.dsfield.ecn",
-    "ip.len", "ip.id", "ip.flags", "ip.frag_offset", "ip.ttl",
-    "ip.proto", "ip.checksum", "ip.src", "ip.dst",
+    "ip.version",
+    "ip.hdr_len",
+    "ip.dsfield.dscp",
+    "ip.dsfield.ecn",
+    "ip.len",
+    "ip.id",
+    "ip.flags",
+    "ip.frag_offset",
+    "ip.ttl",
+    "ip.proto",
+    "ip.checksum",
+    "ip.src",
+    "ip.dst",
     // IPv6
-    "ipv6.version", "ipv6.tclass", "ipv6.flow", "ipv6.plen",
-    "ipv6.nxt", "ipv6.hlim", "ipv6.src", "ipv6.dst",
+    "ipv6.version",
+    "ipv6.tclass",
+    "ipv6.flow",
+    "ipv6.plen",
+    "ipv6.nxt",
+    "ipv6.hlim",
+    "ipv6.src",
+    "ipv6.dst",
     // ARP
-    "arp.hw.type", "arp.proto.type", "arp.hw.size", "arp.proto.size",
-    "arp.opcode", "arp.src.hw_mac", "arp.src.proto_ipv4",
-    "arp.dst.hw_mac", "arp.dst.proto_ipv4",
+    "arp.hw.type",
+    "arp.proto.type",
+    "arp.hw.size",
+    "arp.proto.size",
+    "arp.opcode",
+    "arp.src.hw_mac",
+    "arp.src.proto_ipv4",
+    "arp.dst.hw_mac",
+    "arp.dst.proto_ipv4",
     // TCP
-    "tcp.srcport", "tcp.dstport", "tcp.seq_raw", "tcp.ack_raw",
-    "tcp.hdr_len", "tcp.flags", "tcp.window_size_value",
-    "tcp.checksum", "tcp.urgent_pointer",
+    "tcp.srcport",
+    "tcp.dstport",
+    "tcp.seq_raw",
+    "tcp.ack_raw",
+    "tcp.hdr_len",
+    "tcp.flags",
+    "tcp.window_size_value",
+    "tcp.checksum",
+    "tcp.urgent_pointer",
     // UDP
-    "udp.srcport", "udp.dstport", "udp.length", "udp.checksum",
+    "udp.srcport",
+    "udp.dstport",
+    "udp.length",
+    "udp.checksum",
     // ICMP
-    "icmp.type", "icmp.code", "icmp.checksum",
+    "icmp.type",
+    "icmp.code",
+    "icmp.checksum",
     // ICMPv6
-    "icmpv6.type", "icmpv6.code", "icmpv6.checksum",
+    "icmpv6.type",
+    "icmpv6.code",
+    "icmpv6.checksum",
     // DNS
-    "dns.id", "dns.flags.response", "dns.flags.opcode",
-    "dns.flags.rcode", "dns.flags.authoritative",
-    "dns.flags.truncated", "dns.flags.recdesired",
-    "dns.flags.recavail", "dns.count.queries", "dns.count.answers",
-    "dns.qry.name", "dns.qry.type",
+    "dns.id",
+    "dns.flags.response",
+    "dns.flags.opcode",
+    "dns.flags.rcode",
+    "dns.flags.authoritative",
+    "dns.flags.truncated",
+    "dns.flags.recdesired",
+    "dns.flags.recavail",
+    "dns.count.queries",
+    "dns.count.answers",
+    "dns.qry.name",
+    "dns.qry.type",
     // HTTP
-    "http.request.method", "http.request.uri", "http.response.code",
+    "http.request.method",
+    "http.request.uri",
+    "http.response.code",
     "http.request.version",
     // TLS
-    "tls.record.content_type", "tls.record.version",
+    "tls.record.content_type",
+    "tls.record.version",
     "tls.handshake.extensions_server_name",
     // QUIC
-    "quic.long.packet_type", "quic.version", "quic.dcid", "quic.scid",
+    "quic.long.packet_type",
+    "quic.version",
+    "quic.dcid",
+    "quic.scid",
     // FTP
-    "ftp.request.command", "ftp.request.arg", "ftp.response.code",
+    "ftp.request.command",
+    "ftp.request.arg",
+    "ftp.response.code",
     "ftp.response.arg",
     // SSH
     "ssh.protocol",
     // DHCP
-    "dhcp.type", "dhcp.hw.type", "dhcp.hw.len", "dhcp.hops",
-    "dhcp.id", "dhcp.secs", "dhcp.flags", "dhcp.ip.client",
-    "dhcp.ip.your", "dhcp.ip.server", "dhcp.ip.relay",
-    "dhcp.hw.mac_addr", "dhcp.option.dhcp",
+    "dhcp.type",
+    "dhcp.hw.type",
+    "dhcp.hw.len",
+    "dhcp.hops",
+    "dhcp.id",
+    "dhcp.secs",
+    "dhcp.flags",
+    "dhcp.ip.client",
+    "dhcp.ip.your",
+    "dhcp.ip.server",
+    "dhcp.ip.relay",
+    "dhcp.hw.mac_addr",
+    "dhcp.option.dhcp",
     // DHCPv6
-    "dhcpv6.msgtype", "dhcpv6.xid",
+    "dhcpv6.msgtype",
+    "dhcpv6.xid",
     // SMTP
-    "smtp.req.command", "smtp.req.parameter", "smtp.response.code",
+    "smtp.req.command",
+    "smtp.req.parameter",
+    "smtp.response.code",
     // POP
-    "pop.request.command", "pop.request.parameter",
+    "pop.request.command",
+    "pop.request.parameter",
     "pop.response.indicator",
     // IMAP
-    "imap.request_tag", "imap.request.command",
+    "imap.request_tag",
+    "imap.request.command",
     // SNMP
-    "snmp.version", "snmp.community",
+    "snmp.version",
+    "snmp.community",
     // NTP
-    "ntp.flags.li", "ntp.flags.vn", "ntp.flags.mode", "ntp.stratum",
+    "ntp.flags.li",
+    "ntp.flags.vn",
+    "ntp.flags.mode",
+    "ntp.stratum",
     // BGP
     "bgp.type",
     // LDAP
     "ldap.messageID",
     // RDP/TPKT
-    "tpkt.version", "tpkt.length",
+    "tpkt.version",
+    "tpkt.length",
 };
 
 // Column index lookup helpers
@@ -125,8 +198,7 @@ std::string decStr(auto val) {
 
 using Row = std::vector<std::string>;
 
-void setFrame(Row& row, uint32_t number, uint32_t wireLen,
-              uint32_t capLen) {
+void setFrame(Row& row, uint32_t number, uint32_t wireLen, uint32_t capLen) {
     row[colIndex("frame.number")] = decStr(number);
     row[colIndex("frame.len")] = decStr(wireLen);
     row[colIndex("frame.cap_len")] = decStr(capLen);
@@ -140,8 +212,7 @@ void setEthernet(Row& row, const fdpi::Ethernet& eth) {
 
 void setIPv4(Row& row, const fdpi::IPv4& ip) {
     row[colIndex("ip.version")] = decStr(ip.version);
-    row[colIndex("ip.hdr_len")] =
-        decStr(static_cast<int>(ip.ihl) * 4);
+    row[colIndex("ip.hdr_len")] = decStr(static_cast<int>(ip.ihl) * 4);
     row[colIndex("ip.dsfield.dscp")] = decStr(ip.dscp);
     row[colIndex("ip.dsfield.ecn")] = decStr(ip.ecn);
     row[colIndex("ip.len")] = decStr(ip.totalLength);
@@ -183,8 +254,7 @@ void setTCP(Row& row, const fdpi::TCP& tcp) {
     row[colIndex("tcp.dstport")] = decStr(tcp.dstPort);
     row[colIndex("tcp.seq_raw")] = decStr(tcp.seqNum);
     row[colIndex("tcp.ack_raw")] = decStr(tcp.ackNum);
-    row[colIndex("tcp.hdr_len")] =
-        decStr(static_cast<int>(tcp.dataOffset) * 4);
+    row[colIndex("tcp.hdr_len")] = decStr(static_cast<int>(tcp.dataOffset) * 4);
     row[colIndex("tcp.flags")] = hex16(static_cast<uint16_t>(tcp.flags));
     row[colIndex("tcp.window_size_value")] = decStr(tcp.window);
     row[colIndex("tcp.checksum")] = hex16(tcp.checksum);
@@ -215,13 +285,10 @@ void setDNS(Row& row, const fdpi::DNS& dns) {
     row[colIndex("dns.flags.response")] = dns.isResponse ? "1" : "0";
     row[colIndex("dns.flags.opcode")] = decStr(dns.opcode);
     row[colIndex("dns.flags.rcode")] = decStr(dns.rcode);
-    row[colIndex("dns.flags.authoritative")] =
-        dns.authoritative ? "1" : "0";
+    row[colIndex("dns.flags.authoritative")] = dns.authoritative ? "1" : "0";
     row[colIndex("dns.flags.truncated")] = dns.truncated ? "1" : "0";
-    row[colIndex("dns.flags.recdesired")] =
-        dns.recursionDesired ? "1" : "0";
-    row[colIndex("dns.flags.recavail")] =
-        dns.recursionAvailable ? "1" : "0";
+    row[colIndex("dns.flags.recdesired")] = dns.recursionDesired ? "1" : "0";
+    row[colIndex("dns.flags.recavail")] = dns.recursionAvailable ? "1" : "0";
     row[colIndex("dns.count.queries")] = decStr(dns.questions.size());
     row[colIndex("dns.count.answers")] = decStr(dns.answers.size());
     // Join multiple query names/types with comma
@@ -297,8 +364,7 @@ void setDHCP(Row& row, const fdpi::DHCP& dhcp) {
     row[colIndex("dhcp.ip.relay")] = dhcp.giaddr.toString();
     row[colIndex("dhcp.hw.mac_addr")] = dhcp.chaddr.toString();
     if (dhcp.messageType) {
-        row[colIndex("dhcp.option.dhcp")] =
-            decStr(*dhcp.messageType);
+        row[colIndex("dhcp.option.dhcp")] = decStr(*dhcp.messageType);
     }
 }
 
@@ -321,8 +387,7 @@ void setPOP3(Row& row, const fdpi::POP3& pop3) {
         row[colIndex("pop.request.command")] = pop3.command;
         row[colIndex("pop.request.parameter")] = pop3.argument;
     } else {
-        row[colIndex("pop.response.indicator")] =
-            pop3.success ? "+OK" : "-ERR";
+        row[colIndex("pop.response.indicator")] = pop3.success ? "+OK" : "-ERR";
     }
 }
 
@@ -434,11 +499,24 @@ void setLayer7(Row& row, const decltype(fdpi::Packet::layer7)& l7) {
         l7);
 }
 
+std::string sanitize(const std::string& val) {
+    std::string result;
+    result.reserve(val.size());
+    for (const char c : val) {
+        if (c == '\t' || c == '\n' || c == '\r') {
+            result += ' ';
+        } else {
+            result += c;
+        }
+    }
+    return result;
+}
+
 void printRow(const Row& row) {
     for (size_t i = 0; i < row.size(); ++i) {
         if (i > 0)
             std::cout << '\t';
-        std::cout << row[i];
+        std::cout << sanitize(row[i]);
     }
     std::cout << '\n';
 }
@@ -484,20 +562,18 @@ int main(int argc, char* argv[]) {
         if (!checkedLinkType) {
             checkedLinkType = true;
             if (fpkt.dataLinkType != 1) { // 1 = LINKTYPE_ETHERNET
-                std::cerr << "Unsupported link layer type: "
-                          << fpkt.dataLinkType
+                std::cerr << "Unsupported link layer type: " << fpkt.dataLinkType
                           << " (only Ethernet/1 supported)\n";
                 return 2;
             }
         }
 
-        auto result = decoder.decode({fpkt.data, fpkt.captureLength},
-                                     fpkt.timestampSeconds);
+        auto result =
+            decoder.decode({fpkt.data, fpkt.captureLength}, fpkt.timestampSeconds);
         if (!result) {
             // Output a row with just frame info and an error marker
             Row row(COLUMNS.size());
-            setFrame(row, frameNum, fpkt.length,
-                     fpkt.captureLength);
+            setFrame(row, frameNum, fpkt.length, fpkt.captureLength);
             printRow(row);
             continue;
         }
