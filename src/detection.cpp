@@ -76,12 +76,27 @@ struct ProtocolDetectionEngine::Impl {
         if (std::holds_alternative<TCP>(packet.layer4)) {
             if (srcPort == 21 || dstPort == 21) {
                 if (payload.size() >= 4) {
+                    // FTP response: 3-digit code + space or hyphen (RFC 959)
+                    if (payload[0] >= '1' && payload[0] <= '5' && payload[1] >= '0' &&
+                        payload[1] <= '9' && payload[2] >= '0' && payload[2] <= '9' &&
+                        (payload[3] == ' ' || payload[3] == '-')) {
+                        return AppProtocol::FTP;
+                    }
+                    // FTP commands
                     const std::string_view sv(
                         reinterpret_cast<const char*>(payload.data()),
                         std::min(payload.size(), static_cast<size_t>(16)));
-                    if (sv.starts_with("220 ") || sv.starts_with("USER ") ||
-                        sv.starts_with("PASS ") || sv.starts_with("QUIT") ||
-                        sv.starts_with("SYST") || sv.starts_with("FEAT")) {
+                    if (sv.starts_with("USER ") || sv.starts_with("PASS ") ||
+                        sv.starts_with("QUIT") || sv.starts_with("SYST") ||
+                        sv.starts_with("FEAT") || sv.starts_with("CWD ") ||
+                        sv.starts_with("PWD") || sv.starts_with("TYPE ") ||
+                        sv.starts_with("PASV") || sv.starts_with("PORT ") ||
+                        sv.starts_with("LIST") || sv.starts_with("RETR ") ||
+                        sv.starts_with("STOR ") || sv.starts_with("DELE ") ||
+                        sv.starts_with("SIZE ") || sv.starts_with("NOOP") ||
+                        sv.starts_with("noop") || sv.starts_with("MKD ") ||
+                        sv.starts_with("RMD ") || sv.starts_with("EPSV") ||
+                        sv.starts_with("EPRT")) {
                         return AppProtocol::FTP;
                     }
                 }
