@@ -18,6 +18,7 @@ constexpr uint8_t kProtoICMP = 1;
 constexpr uint8_t kProtoTCP = 6;
 constexpr uint8_t kProtoUDP = 17;
 constexpr uint8_t kProtoGRE = 47;
+constexpr uint8_t kProtoIPv6Frag = 44;
 constexpr uint8_t kProtoICMPv6 = 58;
 
 FlowId buildFlowId(const Packet& pkt) {
@@ -147,6 +148,13 @@ std::expected<Packet, Error> PacketDecoder::decode(std::span<const uint8_t> data
                 // For now, continue with original data
             }
         }
+
+        // Non-first fragments: payload doesn't start at an L4 header boundary
+        if (ipResult->fragmentOffset > 0) {
+            pkt.payload.assign(data.begin() + static_cast<ptrdiff_t>(offset), data.end());
+            pkt.flowId = buildFlowId(pkt);
+            return pkt;
+        }
     } else if (etherType == kEtherTypeIPv6) {
         auto ipResult = decodeIPv6(data, offset);
         if (!ipResult) {
@@ -154,6 +162,28 @@ std::expected<Packet, Error> PacketDecoder::decode(std::span<const uint8_t> data
         }
         pkt.layer3 = *ipResult;
         l4Protocol = ipResult->nextHeader;
+
+        // Parse IPv6 Fragment extension header (RFC 8200 §4.5)
+        if (l4Protocol == kProtoIPv6Frag) {
+            constexpr size_t kFragHdrSize = 8;
+            if (data.size() < offset + kFragHdrSize) {
+                pkt.flowId = buildFlowId(pkt);
+                return pkt;
+            }
+            const uint8_t* fptr = data.data() + offset;
+            l4Protocol = fptr[0]; // real next header
+            uint16_t fragOffsetField = static_cast<uint16_t>((fptr[2] << 8) | fptr[3]);
+            uint16_t fragOffset = fragOffsetField >> 3; // top 13 bits
+            offset += kFragHdrSize;
+
+            if (fragOffset > 0) {
+                pkt.payload.assign(data.begin() + static_cast<ptrdiff_t>(offset),
+                                   data.end());
+                pkt.flowId = buildFlowId(pkt);
+                return pkt;
+            }
+            // First fragment or unfragmented: continue to L4 with real protocol
+        }
     } else if (etherType == kEtherTypeARP) {
         auto arpResult = decodeArp(data, offset);
         if (!arpResult) {
