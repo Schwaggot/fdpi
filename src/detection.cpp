@@ -69,6 +69,39 @@ struct ProtocolDetectionEngine::Impl {
             }
         }
 
+        // RFC 5764 / RFC 7983 demultiplexing for UDP:
+        // Byte 0 range determines protocol on multiplexed flows.
+        //   0-3:     STUN
+        //   20-63:   DTLS
+        //   128-191: RTP/RTCP
+        if (std::holds_alternative<UDP>(packet.layer4) && !payload.empty()) {
+            uint8_t firstByte = payload[0];
+
+            // STUN range (0-3): magic cookie 0x2112A442 at offset 4
+            if ((firstByte & 0xC0) == 0x00 && payload.size() >= 20) {
+                if (payload[4] == 0x21 && payload[5] == 0x12 && payload[6] == 0xA4 &&
+                    payload[7] == 0x42) {
+                    return AppProtocol::STUN;
+                }
+            }
+
+            // DTLS range (20-63): content type + DTLS version
+            if (firstByte >= 20 && firstByte <= 63 && payload.size() >= 13) {
+                uint16_t ver = static_cast<uint16_t>((payload[1] << 8) | payload[2]);
+                if (ver == 0xFEFD || ver == 0xFEFF || ver == 0xFEFC) {
+                    return AppProtocol::DTLS;
+                }
+            }
+
+            // RTP/RTCP range (128-191): version=2, PT 200-211 → RTCP
+            if (firstByte >= 128 && firstByte <= 191 && payload.size() >= 8) {
+                uint8_t pt = payload[1];
+                if (pt >= 200 && pt <= 211) {
+                    return AppProtocol::RTCP;
+                }
+            }
+        }
+
         // QUIC: UDP port 443 with QUIC long header bit
         if (std::holds_alternative<UDP>(packet.layer4)) {
             if ((srcPort == 443 || dstPort == 443) && payload.size() >= 1) {
@@ -298,6 +331,15 @@ struct ProtocolDetectionEngine::Impl {
             }
         }
 
+        // Dropbox LAN Sync: UDP port 17500 + JSON payload
+        if (std::holds_alternative<UDP>(packet.layer4)) {
+            if (srcPort == 17500 || dstPort == 17500) {
+                if (payload.size() >= 2 && payload[0] == '{') {
+                    return AppProtocol::DbLanSyncDisc;
+                }
+            }
+        }
+
         // NTP: UDP port 123
         if (std::holds_alternative<UDP>(packet.layer4)) {
             if (srcPort == 123 || dstPort == 123) {
@@ -432,6 +474,12 @@ AppProtocol ProtocolDetectionEngine::detectFlow(const FlowId& flowId,
 
     auto& state = mImpl->flowStates[flowId];
     if (state.decided) {
+        // For WebRTC-multiplexed protocols (RFC 5764), re-detect per
+        // packet because STUN, DTLS and RTCP share the same 5-tuple.
+        if (state.result == AppProtocol::STUN || state.result == AppProtocol::DTLS ||
+            state.result == AppProtocol::RTCP) {
+            return mImpl->detectSingle(packet, payload);
+        }
         return state.result;
     }
 

@@ -153,6 +153,25 @@ const std::vector<std::string> COLUMNS = {
     // RDP/TPKT
     "tpkt.version",
     "tpkt.length",
+    // STUN
+    "stun.type",
+    "stun.length",
+    "stun.cookie",
+    // DTLS
+    "dtls.record.content_type",
+    "dtls.record.version",
+    "dtls.record.epoch",
+    "dtls.record.length",
+    // RTCP
+    "rtcp.pt",
+    "rtcp.length",
+    "rtcp.senderssrc",
+    // LLDP
+    "lldp.chassis.id.mac",
+    "lldp.port.id.mac",
+    "lldp.time_to_live",
+    // HomePlug-AV
+    "homeplug_av.mmhdr.mmtype.qualcomm",
 };
 
 // Column index lookup helpers
@@ -443,6 +462,35 @@ void setRDP(Row& row, const fdpi::RDP& rdp) {
     row[colIndex("tpkt.length")] = decStr(rdp.tpktLength);
 }
 
+void setSTUN(Row& row, const fdpi::STUN& stun) {
+    row[colIndex("stun.type")] = hex16(stun.type);
+    row[colIndex("stun.length")] = decStr(stun.length);
+    row[colIndex("stun.cookie")] = hex32(stun.magicCookie);
+}
+
+void setDTLS(Row& row, const fdpi::DTLS& dtls) {
+    row[colIndex("dtls.record.content_type")] = decStr(dtls.contentType);
+    row[colIndex("dtls.record.version")] = hex16(dtls.version);
+    row[colIndex("dtls.record.epoch")] = decStr(dtls.epoch);
+    row[colIndex("dtls.record.length")] = decStr(dtls.length);
+}
+
+void setRTCP(Row& row, const fdpi::RTCP& rtcp) {
+    row[colIndex("rtcp.pt")] = decStr(rtcp.packetType);
+    row[colIndex("rtcp.length")] = decStr(rtcp.length);
+    row[colIndex("rtcp.senderssrc")] = hex32(rtcp.ssrc);
+}
+
+void setLLDP(Row& row, const fdpi::LLDP& lldp) {
+    row[colIndex("lldp.chassis.id.mac")] = lldp.chassisId;
+    row[colIndex("lldp.port.id.mac")] = lldp.portId;
+    row[colIndex("lldp.time_to_live")] = decStr(lldp.ttl);
+}
+
+void setHomePlug(Row& row, const fdpi::HomePlug& hp) {
+    row[colIndex("homeplug_av.mmhdr.mmtype.qualcomm")] = hex16(hp.type);
+}
+
 void setLayer3(Row& row, const decltype(fdpi::Packet::layer3)& l3) {
     std::visit(
         [&row](const auto& v) {
@@ -453,8 +501,12 @@ void setLayer3(Row& row, const decltype(fdpi::Packet::layer3)& l3) {
                 setIPv6(row, v);
             } else if constexpr (std::is_same_v<T, fdpi::ARP>) {
                 setARP(row, v);
+            } else if constexpr (std::is_same_v<T, fdpi::LLDP>) {
+                setLLDP(row, v);
+            } else if constexpr (std::is_same_v<T, fdpi::HomePlug>) {
+                setHomePlug(row, v);
             }
-            // RARP: no tshark fields defined, skip
+            // RARP, EAPOL: no tshark fields defined, skip
         },
         l3);
 }
@@ -512,6 +564,12 @@ void setLayer7(Row& row, const decltype(fdpi::Packet::layer7)& l7) {
                 setNTP(row, v);
             } else if constexpr (std::is_same_v<T, fdpi::LDAP>) {
                 setLDAP(row, v);
+            } else if constexpr (std::is_same_v<T, fdpi::STUN>) {
+                setSTUN(row, v);
+            } else if constexpr (std::is_same_v<T, fdpi::DTLS>) {
+                setDTLS(row, v);
+            } else if constexpr (std::is_same_v<T, fdpi::RTCP>) {
+                setRTCP(row, v);
             }
         },
         l7);

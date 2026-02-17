@@ -10,30 +10,36 @@
 #include <fdpi/flow_id.hpp>
 #include <fdpi/protocol/arp.hpp>
 #include <fdpi/protocol/bgp.hpp>
+#include <fdpi/protocol/dblansyncd.hpp>
 #include <fdpi/protocol/dhcp.hpp>
 #include <fdpi/protocol/dhcpv6.hpp>
+#include <fdpi/protocol/dns.hpp>
+#include <fdpi/protocol/dtls.hpp>
 #include <fdpi/protocol/eapol.hpp>
 #include <fdpi/protocol/esp.hpp>
-#include <fdpi/protocol/dns.hpp>
 #include <fdpi/protocol/ethernet.hpp>
 #include <fdpi/protocol/ftp.hpp>
 #include <fdpi/protocol/gre.hpp>
+#include <fdpi/protocol/homeplug.hpp>
 #include <fdpi/protocol/http.hpp>
 #include <fdpi/protocol/icmp.hpp>
 #include <fdpi/protocol/igmp.hpp>
-#include <fdpi/protocol/imf.hpp>
 #include <fdpi/protocol/imap.hpp>
+#include <fdpi/protocol/imf.hpp>
 #include <fdpi/protocol/ipv4.hpp>
 #include <fdpi/protocol/ipv6.hpp>
 #include <fdpi/protocol/ldap.hpp>
+#include <fdpi/protocol/lldp.hpp>
 #include <fdpi/protocol/mpls.hpp>
 #include <fdpi/protocol/nbdgm.hpp>
 #include <fdpi/protocol/nbns.hpp>
 #include <fdpi/protocol/ntp.hpp>
+#include <fdpi/protocol/ocsp.hpp>
 #include <fdpi/protocol/pop3.hpp>
 #include <fdpi/protocol/quic.hpp>
 #include <fdpi/protocol/rarp.hpp>
 #include <fdpi/protocol/rdp.hpp>
+#include <fdpi/protocol/rtcp.hpp>
 #include <fdpi/protocol/rtmp.hpp>
 #include <fdpi/protocol/smb.hpp>
 #include <fdpi/protocol/smtp.hpp>
@@ -41,6 +47,7 @@
 #include <fdpi/protocol/srvloc.hpp>
 #include <fdpi/protocol/ssdp.hpp>
 #include <fdpi/protocol/ssh.hpp>
+#include <fdpi/protocol/stun.hpp>
 #include <fdpi/protocol/tcp.hpp>
 #include <fdpi/protocol/tls.hpp>
 #include <fdpi/protocol/udp.hpp>
@@ -56,7 +63,7 @@ struct Packet {
     std::optional<VlanTag> vlan;
 
     // Network layer
-    std::variant<std::monostate, IPv4, IPv6, ARP, RARP, EAPOL> layer3;
+    std::variant<std::monostate, IPv4, IPv6, ARP, RARP, EAPOL, LLDP, HomePlug> layer3;
 
     // Transport layer
     std::variant<std::monostate, TCP, UDP, ICMP, ICMPv6, IGMP, ESP> layer4;
@@ -85,7 +92,11 @@ struct Packet {
                  NBDGM,
                  SMB,
                  RTMP,
-                 IMF>
+                 IMF,
+                 STUN,
+                 DTLS,
+                 RTCP,
+                 DbLanSyncDisc>
         layer7;
 
     // Unparsed payload beyond the last decoded layer

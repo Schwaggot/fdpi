@@ -18,6 +18,8 @@ constexpr uint16_t kEtherTypeVLAN = 0x8100;
 constexpr uint16_t kEtherTypeQinQ = 0x88A8;
 constexpr uint16_t kEtherTypeMPLS = 0x8847;
 constexpr uint16_t kEtherTypeEAPOL = 0x888E;
+constexpr uint16_t kEtherTypeLLDP = 0x88CC;
+constexpr uint16_t kEtherTypeHomePlug = 0x88E1;
 
 // IP protocol constants
 constexpr uint8_t kProtoICMP = 1;
@@ -267,6 +269,22 @@ std::expected<Packet, Error> PacketDecoder::decode(std::span<const uint8_t> data
         pkt.layer3 = *eapolResult;
         pkt.flowId = buildFlowId(pkt);
         return pkt; // EAPOL has no L4
+    } else if (etherType == kEtherTypeLLDP) {
+        auto lldpResult = decodeLldp(data, offset);
+        if (!lldpResult) {
+            return std::unexpected(lldpResult.error());
+        }
+        pkt.layer3 = *lldpResult;
+        pkt.flowId = buildFlowId(pkt);
+        return pkt; // LLDP has no L4
+    } else if (etherType == kEtherTypeHomePlug) {
+        auto hpResult = decodeHomeplug(data, offset);
+        if (!hpResult) {
+            return std::unexpected(hpResult.error());
+        }
+        pkt.layer3 = *hpResult;
+        pkt.flowId = buildFlowId(pkt);
+        return pkt; // HomePlug has no L4
     } else {
         // Unsupported L3 protocol — store remaining as payload
         pkt.payload.assign(data.begin() + static_cast<ptrdiff_t>(offset), data.end());
@@ -474,6 +492,19 @@ std::expected<Packet, Error> PacketDecoder::decode(std::span<const uint8_t> data
             }
             case AppProtocol::HTTP: {
                 if (auto result = decodeHttp(payloadSpan, l7Offset)) {
+                    // Check for OCSP sub-protocol via Content-Type header
+                    for (const auto& [key, val] : result->headers) {
+                        if ((key == "Content-Type" || key == "content-type") &&
+                            val.find("application/ocsp") != std::string::npos) {
+                            if (l7Offset < payloadSpan.size()) {
+                                size_t ocspOff = l7Offset;
+                                if (auto ocsp = decodeOcsp(payloadSpan, ocspOff)) {
+                                    result->ocspPayload = std::move(*ocsp);
+                                }
+                            }
+                            break;
+                        }
+                    }
                     pkt.layer7 = std::move(*result);
                 }
                 break;
@@ -646,6 +677,30 @@ std::expected<Packet, Error> PacketDecoder::decode(std::span<const uint8_t> data
             }
             case AppProtocol::IMF: {
                 if (auto result = decodeImf(payloadSpan, l7Offset)) {
+                    pkt.layer7 = std::move(*result);
+                }
+                break;
+            }
+            case AppProtocol::STUN: {
+                if (auto result = decodeStun(payloadSpan, l7Offset)) {
+                    pkt.layer7 = std::move(*result);
+                }
+                break;
+            }
+            case AppProtocol::DTLS: {
+                if (auto result = decodeDtls(payloadSpan, l7Offset)) {
+                    pkt.layer7 = std::move(*result);
+                }
+                break;
+            }
+            case AppProtocol::RTCP: {
+                if (auto result = decodeRtcp(payloadSpan, l7Offset)) {
+                    pkt.layer7 = std::move(*result);
+                }
+                break;
+            }
+            case AppProtocol::DbLanSyncDisc: {
+                if (auto result = decodeDbLanSyncDisc(payloadSpan, l7Offset)) {
                     pkt.layer7 = std::move(*result);
                 }
                 break;

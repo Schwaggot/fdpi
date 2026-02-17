@@ -97,6 +97,17 @@ COLUMNS = [
     "ldap.messageID",
     # RDP/TPKT
     "tpkt.version", "tpkt.length",
+    # STUN
+    "stun.type", "stun.length", "stun.cookie",
+    # DTLS
+    "dtls.record.content_type", "dtls.record.version",
+    "dtls.record.epoch", "dtls.record.length",
+    # RTCP
+    "rtcp.pt", "rtcp.length", "rtcp.senderssrc",
+    # LLDP
+    "lldp.chassis.id.mac", "lldp.port.id.mac", "lldp.time_to_live",
+    # HomePlug-AV
+    "homeplug_av.mmhdr.mmtype.qualcomm",
 ]
 
 
@@ -146,6 +157,10 @@ def baseline_path(pcap_path):
 def build_tshark_cmd(pcap_path):
     """Build the tshark command to extract fields."""
     cmd = ["tshark", "-r", str(pcap_path), "-T", "fields"]
+    # Disable tshark's rtcp_udp heuristic dissector — it aggressively
+    # pattern-matches on 2 bytes of random UDP payloads and produces false
+    # positives (every match is flagged [Malformed Packet]).
+    cmd.extend(["--disable-heuristic", "rtcp_udp"])
     for col in COLUMNS:
         cmd.extend(["-e", col])
     # Use tab separator (default), disable quoting
@@ -265,6 +280,10 @@ def normalize_value(field, val):
         "tls.record.version", "ipv6.tclass", "ipv6.flow",
         "arp.proto.type", "dhcp.id", "dhcp.flags",
         "dhcp.hw.type", "dhcpv6.xid",
+        "stun.type", "stun.cookie",
+        "dtls.record.version",
+        "rtcp.senderssrc",
+        "homeplug_av.mmhdr.mmtype.qualcomm",
     }
     if field in hex_fields:
         return normalize_hex(val)
@@ -275,7 +294,8 @@ def normalize_value(field, val):
 
     # MAC addresses: lowercase
     if field in ("eth.src", "eth.dst", "arp.src.hw_mac", "arp.dst.hw_mac",
-                 "dhcp.hw.mac_addr"):
+                 "dhcp.hw.mac_addr", "lldp.chassis.id.mac",
+                 "lldp.port.id.mac"):
         return val.lower()
 
     # IPv6 addresses: lowercase

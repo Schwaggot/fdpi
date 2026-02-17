@@ -566,7 +566,9 @@ void formatLayer3(std::ostringstream& ss,
                                      fdpi::IPv6,
                                      fdpi::ARP,
                                      fdpi::RARP,
-                                     fdpi::EAPOL>& layer3) {
+                                     fdpi::EAPOL,
+                                     fdpi::LLDP,
+                                     fdpi::HomePlug>& layer3) {
     std::visit(
         [&ss](const auto& v) {
             using T = std::decay_t<decltype(v)>;
@@ -580,6 +582,15 @@ void formatLayer3(std::ostringstream& ss,
                 formatRARP(ss, v);
             } else if constexpr (std::is_same_v<T, fdpi::EAPOL>) {
                 formatEAPOL(ss, v);
+            } else if constexpr (std::is_same_v<T, fdpi::LLDP>) {
+                ss << "layer3=LLDP\n";
+                ss << "lldp.chassisId=" << v.chassisId << "\n";
+                ss << "lldp.portId=" << v.portId << "\n";
+                ss << "lldp.ttl=" << v.ttl << "\n";
+            } else if constexpr (std::is_same_v<T, fdpi::HomePlug>) {
+                ss << "layer3=HomePlug\n";
+                ss << "homeplug.version=" << static_cast<int>(v.version) << "\n";
+                ss << "homeplug.type=" << v.type << "\n";
             }
         },
         layer3);
@@ -637,7 +648,11 @@ void formatLayer7(std::ostringstream& ss,
                                      fdpi::NBDGM,
                                      fdpi::SMB,
                                      fdpi::RTMP,
-                                     fdpi::IMF>& layer7) {
+                                     fdpi::IMF,
+                                     fdpi::STUN,
+                                     fdpi::DTLS,
+                                     fdpi::RTCP,
+                                     fdpi::DbLanSyncDisc>& layer7) {
     std::visit(
         [&ss](const auto& v) {
             using T = std::decay_t<decltype(v)>;
@@ -687,6 +702,20 @@ void formatLayer7(std::ostringstream& ss,
                 formatRTMP(ss, v);
             } else if constexpr (std::is_same_v<T, fdpi::IMF>) {
                 formatIMF(ss, v);
+            } else if constexpr (std::is_same_v<T, fdpi::STUN>) {
+                ss << "layer7=STUN\n";
+                ss << "stun.type=" << v.type << "\n";
+                ss << "stun.isRequest=" << v.isRequest << "\n";
+            } else if constexpr (std::is_same_v<T, fdpi::DTLS>) {
+                ss << "layer7=DTLS\n";
+                ss << "dtls.contentType=" << static_cast<int>(v.contentType) << "\n";
+                ss << "dtls.version=0x" << std::hex << v.version << std::dec << "\n";
+            } else if constexpr (std::is_same_v<T, fdpi::RTCP>) {
+                ss << "layer7=RTCP\n";
+                ss << "rtcp.packetType=" << static_cast<int>(v.packetType) << "\n";
+                ss << "rtcp.ssrc=" << v.ssrc << "\n";
+            } else if constexpr (std::is_same_v<T, fdpi::DbLanSyncDisc>) {
+                ss << "layer7=DbLanSyncDisc\n";
             }
         },
         layer7);

@@ -11,9 +11,11 @@ namespace fdpi {
 enum class AppProtocol : uint8_t {
     Unknown = 0,
     BGP,
+    DbLanSyncDisc,
     DHCP,
     DHCPv6,
     DNS,
+    DTLS,
     FTP,
     HTTP,
     IMAP,
@@ -27,6 +29,7 @@ enum class AppProtocol : uint8_t {
     POP3,
     QUIC,
     RDP,
+    RTCP,
     RTMP,
     SMB,
     SMTP,
@@ -34,6 +37,7 @@ enum class AppProtocol : uint8_t {
     SSDP,
     SSH,
     SrvLoc,
+    STUN,
     TLS,
 };
 
