@@ -373,6 +373,13 @@ def compare_pcap(pcap_path, verbose=False):
             total_fields += 1
             field_stats[col]["total"] += 1
 
+            # Multi-value normalization: tshark may report comma-separated
+            # values for encapsulated protocols (e.g., "17,6" for outer UDP +
+            # inner TCP). fdpi only reports the outer value. Compare against
+            # the first comma-delimited element from tshark.
+            if tnorm != fnorm and ',' in tval and ',' not in fval:
+                tnorm = normalize_value(col, tval.split(',')[0].strip())
+
             if tnorm == fnorm:
                 matches += 1
                 field_stats[col]["match"] += 1

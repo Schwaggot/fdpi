@@ -213,11 +213,27 @@ std::expected<Packet, Error> PacketDecoder::decode(std::span<const uint8_t> data
         if (!greResult) {
             return std::unexpected(greResult.error());
         }
-        // After GRE, the inner protocol is specified by GRE protocolType
-        // For v1, store remaining as payload
-        pkt.payload.assign(data.begin() + static_cast<ptrdiff_t>(offset), data.end());
-        pkt.flowId = buildFlowId(pkt);
-        return pkt;
+        if (greResult->protocolType == kEtherTypeIPv4) {
+            auto ipResult = decodeIPv4(data, offset);
+            if (!ipResult) {
+                return std::unexpected(ipResult.error());
+            }
+            pkt.layer3 = *ipResult;
+            l4Protocol = ipResult->protocol;
+        } else if (greResult->protocolType == kEtherTypeIPv6) {
+            auto ipResult = decodeIPv6(data, offset);
+            if (!ipResult) {
+                return std::unexpected(ipResult.error());
+            }
+            pkt.layer3 = *ipResult;
+            l4Protocol = ipResult->nextHeader;
+        } else {
+            // Unknown inner protocol — store as payload
+            pkt.payload.assign(data.begin() + static_cast<ptrdiff_t>(offset), data.end());
+            pkt.flowId = buildFlowId(pkt);
+            return pkt;
+        }
+        // Fall through to L4 decode with inner protocol
     }
 
     // === L4: Transport layer ===
@@ -245,6 +261,56 @@ std::expected<Packet, Error> PacketDecoder::decode(std::span<const uint8_t> data
             return std::unexpected(icmpResult.error());
         }
         pkt.layer4 = *icmpResult;
+    }
+
+    // === Tunnel: VxLAN (UDP:4789) ===
+    constexpr uint16_t kVxlanPort = 4789;
+    constexpr size_t kVxlanHdrSize = 8;
+    if (auto* udp = std::get_if<UDP>(&pkt.layer4);
+        udp && udp->dstPort == kVxlanPort && offset + kVxlanHdrSize < data.size()) {
+        offset += kVxlanHdrSize; // skip VxLAN header (flags + VNI)
+
+        // Decode inner Ethernet
+        auto innerEth = decodeEthernet(data, offset);
+        if (innerEth) {
+            uint16_t innerEtherType = innerEth->etherType;
+
+            // Handle inner VLAN
+            if (innerEtherType == kEtherTypeVLAN || innerEtherType == kEtherTypeQinQ) {
+                if (auto vlan = decodeVlan(data, offset)) {
+                    innerEtherType = vlan->etherType;
+                }
+            }
+
+            // Decode inner L3
+            uint8_t innerL4Proto = 0;
+            if (innerEtherType == kEtherTypeIPv4) {
+                if (auto ip = decodeIPv4(data, offset)) {
+                    pkt.layer3 = *ip;
+                    innerL4Proto = ip->protocol;
+                }
+            } else if (innerEtherType == kEtherTypeIPv6) {
+                if (auto ip = decodeIPv6(data, offset)) {
+                    pkt.layer3 = *ip;
+                    innerL4Proto = ip->nextHeader;
+                }
+            }
+
+            // Decode inner L4
+            if (innerL4Proto == kProtoTCP) {
+                if (auto r = decodeTcp(data, offset))
+                    pkt.layer4 = *r;
+            } else if (innerL4Proto == kProtoUDP) {
+                if (auto r = decodeUdp(data, offset))
+                    pkt.layer4 = *r;
+            } else if (innerL4Proto == kProtoICMP) {
+                if (auto r = decodeIcmp(data, offset))
+                    pkt.layer4 = *r;
+            } else if (innerL4Proto == kProtoICMPv6) {
+                if (auto r = decodeIcmpv6(data, offset))
+                    pkt.layer4 = *r;
+            }
+        }
     }
 
     // Remaining data is payload

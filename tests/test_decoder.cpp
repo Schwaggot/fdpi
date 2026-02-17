@@ -519,3 +519,259 @@ TEST(PacketDecoder, IPv6FragmentNonFirstFragmentSkipsL4) {
         << "Non-first IPv6 fragment must not decode L4";
     EXPECT_FALSE(result->payload.empty());
 }
+
+// Build Ethernet + IPv4(proto=GRE) + GRE + inner IPv4 + inner TCP
+static std::vector<uint8_t> buildGreIpv4TcpPacket() {
+    std::vector<uint8_t> packet;
+
+    // Ethernet header (14 bytes)
+    packet.insert(packet.end(), {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}); // dst
+    packet.insert(packet.end(), {0x00, 0x11, 0x22, 0x33, 0x44, 0x55}); // src
+    packet.push_back(0x08);
+    packet.push_back(0x00); // IPv4
+
+    // Outer IPv4 header (20 bytes) — proto=47 (GRE)
+    packet.push_back(0x45);
+    packet.push_back(0x00);
+    // totalLength: 20(outer IP) + 4(GRE) + 20(inner IP) + 20(inner TCP) = 64
+    packet.push_back(0x00);
+    packet.push_back(0x40);
+    packet.push_back(0x00);
+    packet.push_back(0x01); // id
+    packet.push_back(0x40);
+    packet.push_back(0x00); // DF
+    packet.push_back(0x40); // TTL=64
+    packet.push_back(47);   // proto=GRE
+    packet.push_back(0x00);
+    packet.push_back(0x00);                                // checksum
+    packet.insert(packet.end(), {0x0A, 0x00, 0x00, 0x01}); // src: 10.0.0.1
+    packet.insert(packet.end(), {0x0A, 0x00, 0x00, 0x02}); // dst: 10.0.0.2
+
+    // GRE header (4 bytes): no flags, protocol=IPv4
+    packet.push_back(0x00);
+    packet.push_back(0x00); // flags
+    packet.push_back(0x08);
+    packet.push_back(0x00); // protocol: IPv4
+
+    // Inner IPv4 header (20 bytes) — proto=TCP
+    packet.push_back(0x45);
+    packet.push_back(0x00);
+    packet.push_back(0x00);
+    packet.push_back(0x28); // totalLength=40 (20 IP + 20 TCP)
+    packet.push_back(0x00);
+    packet.push_back(0x02); // id
+    packet.push_back(0x40);
+    packet.push_back(0x00); // DF
+    packet.push_back(0x40); // TTL=64
+    packet.push_back(0x06); // proto=TCP
+    packet.push_back(0x00);
+    packet.push_back(0x00);                                // checksum
+    packet.insert(packet.end(), {0xC0, 0xA8, 0x01, 0x01}); // src: 192.168.1.1
+    packet.insert(packet.end(), {0xC0, 0xA8, 0x01, 0x02}); // dst: 192.168.1.2
+
+    // Inner TCP header (20 bytes)
+    packet.push_back(0x30);
+    packet.push_back(0x39); // srcPort: 12345
+    packet.push_back(0x00);
+    packet.push_back(0x50); // dstPort: 80
+    packet.push_back(0x00);
+    packet.push_back(0x00);
+    packet.push_back(0x03);
+    packet.push_back(0xE8); // seq=1000
+    packet.push_back(0x00);
+    packet.push_back(0x00);
+    packet.push_back(0x00);
+    packet.push_back(0x00); // ack=0
+    packet.push_back(0x50); // dataOffset=5
+    packet.push_back(0x02); // SYN
+    packet.push_back(0xFF);
+    packet.push_back(0xFF); // window
+    packet.push_back(0x00);
+    packet.push_back(0x00); // checksum
+    packet.push_back(0x00);
+    packet.push_back(0x00); // urgent
+
+    return packet;
+}
+
+TEST(PacketDecoder, GreIPv4InnerDecode) {
+    auto data = buildGreIpv4TcpPacket();
+
+    fdpi::PacketDecoder::Config cfg;
+    cfg.enableDefragmentation = false;
+    fdpi::PacketDecoder decoder(cfg);
+    auto result = decoder.decode(data);
+    ASSERT_TRUE(result.has_value());
+
+    // layer3 should be the inner IPv4 (192.168.1.1 → 192.168.1.2)
+    auto* ipv4 = std::get_if<fdpi::IPv4>(&result->layer3);
+    ASSERT_NE(ipv4, nullptr);
+    EXPECT_EQ(ipv4->srcIp, fdpi::IPv4Address(0xC0A80101));
+    EXPECT_EQ(ipv4->dstIp, fdpi::IPv4Address(0xC0A80102));
+    EXPECT_EQ(ipv4->protocol, 6); // TCP
+
+    // layer4 should be the inner TCP
+    auto* tcp = std::get_if<fdpi::TCP>(&result->layer4);
+    ASSERT_NE(tcp, nullptr);
+    EXPECT_EQ(tcp->srcPort, 12345);
+    EXPECT_EQ(tcp->dstPort, 80);
+    EXPECT_TRUE(tcp->syn());
+}
+
+TEST(PacketDecoder, GreUnknownProtocol) {
+    std::vector<uint8_t> packet;
+
+    // Ethernet header
+    packet.insert(packet.end(), {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF});
+    packet.insert(packet.end(), {0x00, 0x11, 0x22, 0x33, 0x44, 0x55});
+    packet.push_back(0x08);
+    packet.push_back(0x00); // IPv4
+
+    // Outer IPv4 (proto=GRE)
+    packet.push_back(0x45);
+    packet.push_back(0x00);
+    packet.push_back(0x00);
+    packet.push_back(0x20); // totalLength=32 (20 IP + 4 GRE + 8 payload)
+    packet.push_back(0x00);
+    packet.push_back(0x01);
+    packet.push_back(0x40);
+    packet.push_back(0x00);
+    packet.push_back(0x40);
+    packet.push_back(47); // GRE
+    packet.push_back(0x00);
+    packet.push_back(0x00);
+    packet.insert(packet.end(), {0x0A, 0x00, 0x00, 0x01});
+    packet.insert(packet.end(), {0x0A, 0x00, 0x00, 0x02});
+
+    // GRE header: unsupported protocol 0x6558 (Transparent Ethernet Bridging)
+    packet.push_back(0x00);
+    packet.push_back(0x00);
+    packet.push_back(0x65);
+    packet.push_back(0x58);
+
+    // Some inner payload
+    packet.insert(packet.end(), {0xAA, 0xBB, 0xCC, 0xDD, 0x11, 0x22, 0x33, 0x44});
+
+    fdpi::PacketDecoder::Config cfg;
+    cfg.enableDefragmentation = false;
+    fdpi::PacketDecoder decoder(cfg);
+    auto result = decoder.decode(packet);
+    ASSERT_TRUE(result.has_value());
+
+    // layer4 should be monostate — GRE with unsupported inner protocol
+    EXPECT_TRUE(std::holds_alternative<std::monostate>(result->layer4));
+    // Payload should contain the remaining bytes after GRE header
+    EXPECT_FALSE(result->payload.empty());
+    EXPECT_EQ(result->payload.size(), 8u);
+}
+
+TEST(PacketDecoder, VxlanInnerDecode) {
+    std::vector<uint8_t> packet;
+
+    // Outer Ethernet header (14 bytes)
+    packet.insert(packet.end(), {0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0x01}); // dst
+    packet.insert(packet.end(), {0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0x02}); // src
+    packet.push_back(0x08);
+    packet.push_back(0x00); // IPv4
+
+    // Outer IPv4 header (20 bytes) — proto=UDP
+    // totalLength: 20(IP) + 8(UDP) + 8(VxLAN) + 14(inner Eth) + 20(inner IP) + 20(inner TCP) = 90
+    packet.push_back(0x45);
+    packet.push_back(0x00);
+    packet.push_back(0x00);
+    packet.push_back(0x5A); // totalLength=90
+    packet.push_back(0x00);
+    packet.push_back(0x01);
+    packet.push_back(0x40);
+    packet.push_back(0x00);
+    packet.push_back(0x40);
+    packet.push_back(0x11); // UDP
+    packet.push_back(0x00);
+    packet.push_back(0x00);
+    packet.insert(packet.end(), {0x0A, 0x00, 0x00, 0x01}); // src: 10.0.0.1
+    packet.insert(packet.end(), {0x0A, 0x00, 0x00, 0x02}); // dst: 10.0.0.2
+
+    // Outer UDP header (8 bytes) — dstPort=4789
+    packet.push_back(0xFF);
+    packet.push_back(0xE0); // srcPort: 65504
+    packet.push_back(0x12);
+    packet.push_back(0xB5); // dstPort: 4789
+    packet.push_back(0x00);
+    packet.push_back(0x46); // length: 70 (8 + 8 + 14 + 20 + 20)
+    packet.push_back(0x00);
+    packet.push_back(0x00); // checksum
+
+    // VxLAN header (8 bytes): flags=0x08, VNI=100
+    packet.push_back(0x08);
+    packet.push_back(0x00);
+    packet.push_back(0x00);
+    packet.push_back(0x00);
+    packet.push_back(0x00);
+    packet.push_back(0x00);
+    packet.push_back(0x64); // VNI=100
+    packet.push_back(0x00);
+
+    // Inner Ethernet header (14 bytes)
+    packet.insert(packet.end(), {0x11, 0x22, 0x33, 0x44, 0x55, 0x66}); // dst
+    packet.insert(packet.end(), {0x77, 0x88, 0x99, 0xAA, 0xBB, 0xCC}); // src
+    packet.push_back(0x08);
+    packet.push_back(0x00); // IPv4
+
+    // Inner IPv4 header (20 bytes) — proto=TCP
+    packet.push_back(0x45);
+    packet.push_back(0x00);
+    packet.push_back(0x00);
+    packet.push_back(0x28); // totalLength=40
+    packet.push_back(0x00);
+    packet.push_back(0x02);
+    packet.push_back(0x40);
+    packet.push_back(0x00);
+    packet.push_back(0x40);
+    packet.push_back(0x06); // TCP
+    packet.push_back(0x00);
+    packet.push_back(0x00);
+    packet.insert(packet.end(), {0xC0, 0xA8, 0x01, 0x0A}); // src: 192.168.1.10
+    packet.insert(packet.end(), {0xC0, 0xA8, 0x01, 0x0B}); // dst: 192.168.1.11
+
+    // Inner TCP header (20 bytes)
+    packet.push_back(0xC0);
+    packet.push_back(0x00); // srcPort: 49152
+    packet.push_back(0x01);
+    packet.push_back(0xBB); // dstPort: 443
+    packet.push_back(0x00);
+    packet.push_back(0x00);
+    packet.push_back(0x10);
+    packet.push_back(0x00); // seq
+    packet.push_back(0x00);
+    packet.push_back(0x00);
+    packet.push_back(0x00);
+    packet.push_back(0x00); // ack
+    packet.push_back(0x50); // dataOffset=5
+    packet.push_back(0x02); // SYN
+    packet.push_back(0xFF);
+    packet.push_back(0xFF); // window
+    packet.push_back(0x00);
+    packet.push_back(0x00); // checksum
+    packet.push_back(0x00);
+    packet.push_back(0x00); // urgent
+
+    fdpi::PacketDecoder::Config cfg;
+    cfg.enableDefragmentation = false;
+    fdpi::PacketDecoder decoder(cfg);
+    auto result = decoder.decode(packet);
+    ASSERT_TRUE(result.has_value());
+
+    // layer3 should be the inner IPv4 (192.168.1.10 → 192.168.1.11)
+    auto* ipv4 = std::get_if<fdpi::IPv4>(&result->layer3);
+    ASSERT_NE(ipv4, nullptr);
+    EXPECT_EQ(ipv4->srcIp, fdpi::IPv4Address(0xC0A8010A));
+    EXPECT_EQ(ipv4->dstIp, fdpi::IPv4Address(0xC0A8010B));
+    EXPECT_EQ(ipv4->protocol, 6); // TCP
+
+    // layer4 should be the inner TCP
+    auto* tcp = std::get_if<fdpi::TCP>(&result->layer4);
+    ASSERT_NE(tcp, nullptr);
+    EXPECT_EQ(tcp->srcPort, 49152);
+    EXPECT_EQ(tcp->dstPort, 443);
+    EXPECT_TRUE(tcp->syn());
+}
