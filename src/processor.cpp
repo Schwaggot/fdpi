@@ -8,7 +8,7 @@ namespace fdpi {
 struct PacketProcessor::Impl {
     struct WorkItem {
         std::vector<uint8_t> data;
-        uint64_t timestamp;
+        Timestamp timestamp;
         DataLinkType dlt{DataLinkType::DLT_EN10MB};
     };
 
@@ -92,7 +92,7 @@ void PacketProcessor::setHandler(std::shared_ptr<PacketHandler> handler) const {
 }
 
 void PacketProcessor::submit(std::span<const uint8_t> data,
-                             const uint64_t timestamp,
+                             const Timestamp timestamp,
                              const DataLinkType dlt) const {
     if (!mImpl->started)
         return;
@@ -124,13 +124,13 @@ void PacketProcessor::submit(std::span<const uint8_t> data,
 }
 
 void PacketProcessor::submit(std::vector<uint8_t>&& data,
-                             const uint64_t timestamp,
+                             const Timestamp timestamp,
                              const DataLinkType dlt) const {
     submit(std::span<const uint8_t>(data), timestamp, dlt);
 }
 
 void PacketProcessor::submitBatch(
-    std::span<const std::pair<std::span<const uint8_t>, uint64_t>> packets) const {
+    std::span<const std::pair<std::span<const uint8_t>, Timestamp>> packets) const {
     for (const auto& [data, ts] : packets) {
         submit(data, ts);
     }

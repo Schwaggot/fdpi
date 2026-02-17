@@ -1,5 +1,8 @@
-#include <fdpi/decoder.hpp>
 #include <gtest/gtest.h>
+
+#include <fdpi/decoder.hpp>
+
+#include <chrono>
 #include <vector>
 
 // Build a complete Ethernet + IPv4 + TCP packet
@@ -165,7 +168,7 @@ TEST(PacketDecoder, DecodesEthernetIPv4TcpPacket) {
     fdpi::PacketDecoder decoder;
     auto pktData = buildTcpPacket(0xC0A80101, 0x0A000001, 12345, 80, 0x02);
 
-    auto result = decoder.decode(pktData, 1000);
+    auto result = decoder.decode(pktData);
     ASSERT_TRUE(result.has_value());
 
     const auto& pkt = result.value();
@@ -194,7 +197,7 @@ TEST(PacketDecoder, DecodesUdpDnsPacket) {
     fdpi::PacketDecoder decoder;
     auto pktData = buildDnsQueryPacket("example.com");
 
-    auto result = decoder.decode(pktData, 2000);
+    auto result = decoder.decode(pktData);
     ASSERT_TRUE(result.has_value());
 
     const auto& pkt = result.value();
@@ -236,11 +239,11 @@ TEST(PacketDecoder, UpdatesFlowTable) {
     fdpi::PacketDecoder decoder;
     auto pktData = buildTcpPacket(0xC0A80101, 0x0A000001, 12345, 80);
 
-    decoder.decode(pktData, 1000);
+    decoder.decode(pktData);
     EXPECT_EQ(decoder.flows().size(), 1u);
 
     // Second packet to same flow
-    decoder.decode(pktData, 2000);
+    decoder.decode(pktData);
     EXPECT_EQ(decoder.flows().size(), 1u);
 }
 
@@ -250,8 +253,8 @@ TEST(PacketDecoder, TracksMultipleFlows) {
     auto pkt1 = buildTcpPacket(0xC0A80101, 0x0A000001, 12345, 80);
     auto pkt2 = buildTcpPacket(0xC0A80102, 0x0A000002, 54321, 443);
 
-    decoder.decode(pkt1, 1000);
-    decoder.decode(pkt2, 2000);
+    decoder.decode(pkt1);
+    decoder.decode(pkt2);
     EXPECT_EQ(decoder.flows().size(), 2u);
 }
 
@@ -259,9 +262,10 @@ TEST(PacketDecoder, SetsTimestamp) {
     fdpi::PacketDecoder decoder;
     auto pktData = buildTcpPacket(0xC0A80101, 0x0A000001, 12345, 80);
 
-    auto result = decoder.decode(pktData, 42000);
+    auto result =
+        decoder.decode(pktData, fdpi::Timestamp{std::chrono::microseconds{42000}});
     ASSERT_TRUE(result.has_value());
-    EXPECT_EQ(result->timestamp, 42000u);
+    EXPECT_EQ(result->timestamp, fdpi::Timestamp{std::chrono::microseconds{42000}});
 }
 
 TEST(PacketDecoder, DecodesARPPacket) {
@@ -675,7 +679,8 @@ TEST(PacketDecoder, VxlanInnerDecode) {
     packet.push_back(0x00); // IPv4
 
     // Outer IPv4 header (20 bytes) — proto=UDP
-    // totalLength: 20(IP) + 8(UDP) + 8(VxLAN) + 14(inner Eth) + 20(inner IP) + 20(inner TCP) = 90
+    // totalLength: 20(IP) + 8(UDP) + 8(VxLAN) + 14(inner Eth) + 20(inner IP) + 20(inner
+    // TCP) = 90
     packet.push_back(0x45);
     packet.push_back(0x00);
     packet.push_back(0x00);

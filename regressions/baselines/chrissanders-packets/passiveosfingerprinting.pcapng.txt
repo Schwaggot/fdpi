@@ -1,5 +1,5 @@
 --- packet 1 ---
-timestamp=1278938132
+timestamp=1278938132655926
 captureLength=62
 wireLength=62
 ethernet.src=00:0c:29:f9:74:d8
@@ -36,7 +36,7 @@ flow.dstPort=80
 flow.protocol=6
 payloadSize=0
 --- packet 2 ---
-timestamp=1278938132
+timestamp=1278938132656034
 captureLength=62
 wireLength=62
 ethernet.src=00:0c:29:f9:74:d8

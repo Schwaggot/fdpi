@@ -101,7 +101,7 @@ IpDefragmenter::process(const std::span<const uint8_t> fragment,
     return result;
 }
 
-size_t IpDefragmenter::cleanupExpired(uint64_t /*nowTimestamp*/) {
+size_t IpDefragmenter::cleanupExpired(Timestamp /*now*/) {
     // Simplified: in production would check timestamps
     return 0;
 }

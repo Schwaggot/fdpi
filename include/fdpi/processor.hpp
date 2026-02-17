@@ -35,13 +35,37 @@ public:
     void setHandler(std::shared_ptr<PacketHandler> handler) const;
 
     void submit(std::span<const uint8_t> data,
-                uint64_t timestamp = 0,
+                Timestamp timestamp = {},
                 DataLinkType dlt = DataLinkType::DLT_EN10MB) const;
     void submit(std::vector<uint8_t>&& data,
-                uint64_t timestamp = 0,
+                Timestamp timestamp = {},
                 DataLinkType dlt = DataLinkType::DLT_EN10MB) const;
     void submitBatch(
-        std::span<const std::pair<std::span<const uint8_t>, uint64_t>> packets) const;
+        std::span<const std::pair<std::span<const uint8_t>, Timestamp>> packets) const;
+
+    template <PacketSource P>
+    void submit(const P& source) const {
+        Timestamp ts{};
+        if constexpr (requires {
+                          { source.timestampSeconds } -> std::convertible_to<uint64_t>;
+                      }) {
+            ts = Timestamp{std::chrono::seconds{source.timestampSeconds}};
+            if constexpr (requires {
+                              {
+                                  source.timestampMicroseconds
+                              } -> std::convertible_to<uint64_t>;
+                          })
+                ts += std::chrono::microseconds{source.timestampMicroseconds};
+        }
+
+        DataLinkType dlt = DataLinkType::DLT_EN10MB;
+        if constexpr (requires {
+                          { source.dataLinkType } -> std::convertible_to<uint16_t>;
+                      })
+            dlt = static_cast<DataLinkType>(source.dataLinkType);
+
+        submit({source.data, static_cast<std::size_t>(source.captureLength)}, ts, dlt);
+    }
 
     void start() const;
     void stop() const;

@@ -33,6 +33,7 @@
 #include <fdpi/protocol/ntp.hpp>
 #include <fdpi/protocol/ldap.hpp>
 #include <fdpi/flow_id.hpp>
+#include <fdpi/timestamp.hpp>
 #include <fdpi/flow_table.hpp>
 #include <fdpi/packet.hpp>
 #include <fdpi/decoder.hpp>

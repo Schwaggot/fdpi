@@ -23,9 +23,8 @@ TcpReassembler::TcpReassembler(const Config& config) : mImpl(std::make_unique<Im
 
 TcpReassembler::~TcpReassembler() = default;
 
-std::optional<std::vector<uint8_t>> TcpReassembler::process(const FlowId& flowId,
-                                                              const TCP& header,
-                                                              std::span<const uint8_t> payload) const {
+std::optional<std::vector<uint8_t>> TcpReassembler::process(
+    const FlowId& flowId, const TCP& header, std::span<const uint8_t> payload) const {
     if (payload.empty()) {
         return std::nullopt;
     }
@@ -73,7 +72,7 @@ std::optional<std::vector<uint8_t>> TcpReassembler::process(const FlowId& flowId
     return result;
 }
 
-size_t TcpReassembler::cleanupExpired(uint64_t /*nowTimestamp*/) {
+size_t TcpReassembler::cleanupExpired(Timestamp /*now*/) {
     return 0;
 }
 

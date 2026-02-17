@@ -2,6 +2,7 @@
 #define FDPI_DECODER_HPP
 
 #include <chrono>
+#include <concepts>
 #include <cstdint>
 #include <expected>
 #include <memory>
@@ -27,7 +28,7 @@ public:
 
     std::optional<std::vector<uint8_t>> process(std::span<const uint8_t> fragment,
                                                 const IPv4& header) const;
-    static size_t cleanupExpired(uint64_t nowTimestamp);
+    static size_t cleanupExpired(Timestamp now);
 
 private:
     struct Impl;
@@ -50,7 +51,7 @@ public:
     std::optional<std::vector<uint8_t>> process(const FlowId& flowId,
                                                 const TCP& header,
                                                 std::span<const uint8_t> payload) const;
-    static size_t cleanupExpired(uint64_t nowTimestamp);
+    static size_t cleanupExpired(Timestamp now);
 
 private:
     struct Impl;
@@ -83,6 +84,12 @@ struct PacketDecoderConfig {
     TcpReassemblerConfig reassemblyConfig{};
 };
 
+template <typename T>
+concept PacketSource = requires(const T& p) {
+    { p.data } -> std::convertible_to<const uint8_t*>;
+    { p.captureLength } -> std::convertible_to<std::size_t>;
+};
+
 class PacketDecoder {
 public:
     using Config = PacketDecoderConfig;
@@ -92,8 +99,33 @@ public:
 
     std::expected<Packet, Error>
     decode(std::span<const uint8_t> data,
-           uint64_t timestamp = 0,
+           Timestamp timestamp = {},
            DataLinkType dlt = DataLinkType::DLT_EN10MB) const;
+
+    template <PacketSource P>
+    std::expected<Packet, Error> decode(const P& source) const {
+        Timestamp ts{};
+        if constexpr (requires {
+                          { source.timestampSeconds } -> std::convertible_to<uint64_t>;
+                      }) {
+            ts = Timestamp{std::chrono::seconds{source.timestampSeconds}};
+            if constexpr (requires {
+                              {
+                                  source.timestampMicroseconds
+                              } -> std::convertible_to<uint64_t>;
+                          })
+                ts += std::chrono::microseconds{source.timestampMicroseconds};
+        }
+
+        DataLinkType dlt = DataLinkType::DLT_EN10MB;
+        if constexpr (requires {
+                          { source.dataLinkType } -> std::convertible_to<uint16_t>;
+                      })
+            dlt = static_cast<DataLinkType>(source.dataLinkType);
+
+        return decode({source.data, static_cast<std::size_t>(source.captureLength)}, ts,
+                      dlt);
+    }
 
     const FlowTable& flows() const;
     FlowTable& flows();

@@ -1,6 +1,9 @@
 #include <gtest/gtest.h>
+
 #include <fdpi/flow_table.hpp>
 #include <fdpi/packet.hpp>
+
+#include <chrono>
 #include <unordered_set>
 
 namespace {
@@ -42,10 +45,10 @@ TEST(FlowId, InequalityForDifferentProtocols) {
     a.dstIp = ipv4(10, 0, 0, 2);
     a.srcPort = 12345;
     a.dstPort = 80;
-    a.protocol = 6;  // TCP
+    a.protocol = 6; // TCP
 
     fdpi::FlowId b = a;
-    b.protocol = 17;  // UDP
+    b.protocol = 17; // UDP
     EXPECT_NE(a, b);
 }
 
@@ -102,7 +105,7 @@ TEST(FlowIdHash, UsableInUnorderedSet) {
 
     flowSet.insert(id1);
     flowSet.insert(id2);
-    flowSet.insert(id1);  // duplicate
+    flowSet.insert(id1); // duplicate
 
     EXPECT_EQ(flowSet.size(), 2u);
     EXPECT_TRUE(flowSet.count(id1) > 0);
@@ -145,7 +148,7 @@ TEST(FlowTable, InsertAndLookup) {
     pkt.flowId.srcPort = 12345;
     pkt.flowId.dstPort = 80;
     pkt.flowId.protocol = 6;
-    pkt.timestamp = 1000;
+    pkt.timestamp = fdpi::Timestamp{std::chrono::microseconds{1000}};
 
     table.update(pkt);
     EXPECT_EQ(table.size(), 1u);
@@ -164,19 +167,19 @@ TEST(FlowTable, UpdateIncrementsCounters) {
     pkt.flowId.srcPort = 12345;
     pkt.flowId.dstPort = 80;
     pkt.flowId.protocol = 6;
-    pkt.timestamp = 1000;
+    pkt.timestamp = fdpi::Timestamp{std::chrono::microseconds{1000}};
 
     table.update(pkt);
-    pkt.timestamp = 2000;
+    pkt.timestamp = fdpi::Timestamp{std::chrono::microseconds{2000}};
     table.update(pkt);
-    pkt.timestamp = 3000;
+    pkt.timestamp = fdpi::Timestamp{std::chrono::microseconds{3000}};
     table.update(pkt);
 
     auto result = table.lookup(pkt.flowId);
     ASSERT_TRUE(result.has_value());
     EXPECT_EQ(result->packetCount, 3u);
-    EXPECT_EQ(result->firstSeen, 1000u);
-    EXPECT_EQ(result->lastSeen, 3000u);
+    EXPECT_EQ(result->firstSeen, fdpi::Timestamp{std::chrono::microseconds{1000}});
+    EXPECT_EQ(result->lastSeen, fdpi::Timestamp{std::chrono::microseconds{3000}});
 }
 
 TEST(FlowTable, MultipleDistinctFlows) {
@@ -221,8 +224,8 @@ TEST(FlowTable, ForEachVisitsAllFlows) {
 
 TEST(FlowMetadata, InitialState) {
     fdpi::FlowMetadata meta;
-    EXPECT_EQ(meta.firstSeen, 0u);
-    EXPECT_EQ(meta.lastSeen, 0u);
+    EXPECT_EQ(meta.firstSeen, fdpi::Timestamp{});
+    EXPECT_EQ(meta.lastSeen, fdpi::Timestamp{});
     EXPECT_EQ(meta.packetCount, 0u);
     EXPECT_EQ(meta.byteCount, 0u);
     EXPECT_FALSE(meta.detectedProtocol.has_value());

@@ -1,5 +1,5 @@
 --- packet 1 ---
-timestamp=1418173441
+timestamp=1418173441014239
 captureLength=62
 wireLength=62
 ethernet.src=54:75:d0:c9:0b:81

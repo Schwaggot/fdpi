@@ -65,16 +65,13 @@ std::optional<FlowMetadata> FlowTable::lookup(const FlowId& id) const {
     return std::nullopt;
 }
 
-size_t FlowTable::cleanupExpired(const uint64_t nowTimestamp) {
+size_t FlowTable::cleanupExpired(const Timestamp now) {
     std::lock_guard lock(mMutex);
     size_t removed = 0;
 
-    const uint64_t timeoutNs =
-        static_cast<uint64_t>(mConfig.flowTimeout.count()) * 1'000'000'000ULL;
-
     for (auto it = mFlows.begin(); it != mFlows.end();) {
-        if (nowTimestamp > it->second.lastSeen &&
-            (nowTimestamp - it->second.lastSeen) > timeoutNs) {
+        if (now > it->second.lastSeen &&
+            (now - it->second.lastSeen) > mConfig.flowTimeout) {
             it = mFlows.erase(it);
             removed++;
         } else {

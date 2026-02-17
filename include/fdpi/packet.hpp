@@ -34,6 +34,7 @@
 #include <fdpi/protocol/tcp.hpp>
 #include <fdpi/protocol/tls.hpp>
 #include <fdpi/protocol/udp.hpp>
+#include <fdpi/timestamp.hpp>
 
 namespace fdpi {
 
@@ -74,7 +75,7 @@ struct Packet {
     // Metadata
     DataLinkType dlt{DataLinkType::DLT_EN10MB};
     FlowId flowId;
-    uint64_t timestamp{0};
+    Timestamp timestamp{};
     uint32_t captureLength{0};
     uint32_t wireLength{0};
 };

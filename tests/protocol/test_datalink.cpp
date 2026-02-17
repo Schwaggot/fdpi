@@ -437,19 +437,20 @@ TEST(DataLink, WifiQoSDataFrame) {
 TEST(DataLink, RadiotapDataFrame) {
     // Radiotap header: version=0, pad=0, length=8 (LE), present=0
     // Followed by a standard 802.11 data frame (IBSS) + LLC/SNAP
-    std::vector<uint8_t> data = {                        // Radiotap header (8 bytes)
-                                 0x00,                   // version
-                                 0x00,                   // pad
-                                 0x08, 0x00,             // length (LE) = 8
-                                 0x00, 0x00, 0x00, 0x00, // present flags
-                                 // 802.11 data frame (IBSS, 24 bytes)
+    std::vector<uint8_t> data = {            // Radiotap header (8 bytes)
+                                 0x00,       // version
+                                 0x00,       // pad
+                                 0x08, 0x00, // length (LE) = 8
+                                 0x00, 0x00, 0x00,
+                                 0x00, // present flags
+                                       // 802.11 data frame (IBSS, 24 bytes)
                                  0x08, 0x00, // Frame control (data frame)
                                  0x00, 0x00, // Duration
                                  0xA1, 0xA2, 0xA3, 0xA4, 0xA5, 0xA6, // addr1 (DA)
                                  0xB1, 0xB2, 0xB3, 0xB4, 0xB5, 0xB6, // addr2 (SA)
                                  0xC1, 0xC2, 0xC3, 0xC4, 0xC5, 0xC6, // addr3 (BSSID)
                                  0x00, 0x00,                         // Sequence control
-                                 // LLC/SNAP (8 bytes)
+                                             // LLC/SNAP (8 bytes)
                                  0xAA, 0xAA, 0x03, 0x00, 0x00, 0x00, 0x08, 0x00};
     size_t offset = 0;
     auto result =
@@ -566,7 +567,7 @@ TEST(DataLink, DecoderRawIPv4) {
     config.enableProtocolDetection = false;
     fdpi::PacketDecoder decoder(config);
 
-    auto result = decoder.decode(data, 0, fdpi::DataLinkType::DLT_RAW);
+    auto result = decoder.decode(data, {}, fdpi::DataLinkType::DLT_RAW);
     ASSERT_TRUE(result.has_value());
     EXPECT_EQ(result->dlt, fdpi::DataLinkType::DLT_RAW);
     EXPECT_FALSE(result->ethernet.has_value()); // No Ethernet for raw IP
@@ -629,7 +630,7 @@ TEST(DataLink, DecoderDefaultIsEthernet) {
     fdpi::PacketDecoder decoder(config);
 
     // Call without DLT parameter — should default to Ethernet
-    auto result = decoder.decode(data, 0);
+    auto result = decoder.decode(data);
     ASSERT_TRUE(result.has_value());
     EXPECT_EQ(result->dlt, fdpi::DataLinkType::DLT_EN10MB);
     EXPECT_TRUE(result->ethernet.has_value());

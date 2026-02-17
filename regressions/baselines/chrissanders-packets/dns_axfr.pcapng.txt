@@ -1,5 +1,5 @@
 --- packet 1 ---
-timestamp=1264976181
+timestamp=1264976181260924
 captureLength=62
 wireLength=62
 ethernet.src=00:0c:29:7e:ec:a4
@@ -36,7 +36,7 @@ flow.dstPort=53
 flow.protocol=6
 payloadSize=0
 --- packet 2 ---
-timestamp=1264976181
+timestamp=1264976181261079
 captureLength=62
 wireLength=62
 ethernet.src=00:0c:29:ce:d1:9e
@@ -73,7 +73,7 @@ flow.dstPort=1108
 flow.protocol=6
 payloadSize=0
 --- packet 3 ---
-timestamp=1264976181
+timestamp=1264976181261106
 captureLength=54
 wireLength=54
 ethernet.src=00:0c:29:7e:ec:a4
@@ -110,7 +110,7 @@ flow.dstPort=53
 flow.protocol=6
 payloadSize=0
 --- packet 4 ---
-timestamp=1264976181
+timestamp=1264976181261180
 captureLength=56
 wireLength=56
 ethernet.src=00:0c:29:7e:ec:a4
@@ -147,7 +147,7 @@ flow.dstPort=53
 flow.protocol=6
 payloadSize=2
 --- packet 5 ---
-timestamp=1264976181
+timestamp=1264976181479540
 captureLength=60
 wireLength=60
 ethernet.src=00:0c:29:ce:d1:9e
@@ -184,7 +184,7 @@ flow.dstPort=1108
 flow.protocol=6
 payloadSize=6
 --- packet 6 ---
-timestamp=1264976181
+timestamp=1264976181479580
 captureLength=87
 wireLength=87
 ethernet.src=00:0c:29:7e:ec:a4
@@ -221,7 +221,7 @@ flow.dstPort=53
 flow.protocol=6
 payloadSize=33
 --- packet 7 ---
-timestamp=1264976181
+timestamp=1264976181501349
 captureLength=1210
 wireLength=1210
 ethernet.src=00:0c:29:ce:d1:9e
@@ -379,7 +379,7 @@ flow.dstPort=1108
 flow.protocol=6
 payloadSize=1156
 --- packet 8 ---
-timestamp=1264976181
+timestamp=1264976181502104
 captureLength=54
 wireLength=54
 ethernet.src=00:0c:29:7e:ec:a4
@@ -416,7 +416,7 @@ flow.dstPort=53
 flow.protocol=6
 payloadSize=0
 --- packet 9 ---
-timestamp=1264976181
+timestamp=1264976181502321
 captureLength=60
 wireLength=60
 ethernet.src=00:0c:29:ce:d1:9e
@@ -453,7 +453,7 @@ flow.dstPort=1108
 flow.protocol=6
 payloadSize=6
 --- packet 10 ---
-timestamp=1264976181
+timestamp=1264976181502357
 captureLength=60
 wireLength=60
 ethernet.src=00:0c:29:ce:d1:9e
@@ -490,7 +490,7 @@ flow.dstPort=1108
 flow.protocol=6
 payloadSize=6
 --- packet 11 ---
-timestamp=1264976181
+timestamp=1264976181502373
 captureLength=54
 wireLength=54
 ethernet.src=00:0c:29:7e:ec:a4

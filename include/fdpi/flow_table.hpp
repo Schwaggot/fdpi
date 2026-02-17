@@ -10,6 +10,7 @@
 #include <unordered_map>
 
 #include <fdpi/flow_id.hpp>
+#include <fdpi/timestamp.hpp>
 
 namespace fdpi {
 
@@ -17,11 +18,11 @@ namespace fdpi {
 struct Packet;
 
 struct FlowMetadata {
-    FlowId               flowId;
-    uint64_t             firstSeen{0};
-    uint64_t             lastSeen{0};
-    uint64_t             packetCount{0};
-    uint64_t             byteCount{0};
+    FlowId flowId;
+    Timestamp firstSeen{};
+    Timestamp lastSeen{};
+    uint64_t packetCount{0};
+    uint64_t byteCount{0};
     std::optional<AppProtocol> detectedProtocol;
 };
 
@@ -39,7 +40,7 @@ public:
 
     FlowMetadata& update(const Packet& packet);
     std::optional<FlowMetadata> lookup(const FlowId& id) const;
-    size_t cleanupExpired(uint64_t nowTimestamp);
+    size_t cleanupExpired(Timestamp now);
     void forEach(const std::function<void(const FlowMetadata&)>& visitor) const;
     size_t size() const;
 

@@ -13,7 +13,7 @@ error=UnsupportedProtocol
 --- packet 7 ---
 error=UnsupportedProtocol
 --- packet 8 ---
-timestamp=1462386841
+timestamp=1462386841411394
 captureLength=157
 wireLength=157
 ethernet.src=28:c6:8e:ab:96:16
@@ -26,7 +26,7 @@ flow.dstPort=0
 flow.protocol=0
 payloadSize=103
 --- packet 9 ---
-timestamp=1462386841
+timestamp=1462386841413909
 captureLength=183
 wireLength=183
 ethernet.src=ac:cf:5c:78:6c:9c
@@ -39,7 +39,7 @@ flow.dstPort=0
 flow.protocol=0
 payloadSize=129
 --- packet 10 ---
-timestamp=1462386841
+timestamp=1462386841415193
 captureLength=181
 wireLength=181
 ethernet.src=28:c6:8e:ab:96:16
@@ -52,7 +52,7 @@ flow.dstPort=0
 flow.protocol=0
 payloadSize=127
 --- packet 11 ---
-timestamp=1462386841
+timestamp=1462386841416751
 captureLength=157
 wireLength=157
 ethernet.src=ac:cf:5c:78:6c:9c

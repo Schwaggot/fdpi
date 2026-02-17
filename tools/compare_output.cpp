@@ -557,9 +557,7 @@ int main(int argc, char* argv[]) {
     for (const auto& fpkt : reader) {
         ++frameNum;
 
-        auto result =
-            decoder.decode({fpkt.data, fpkt.captureLength}, fpkt.timestampSeconds,
-                           static_cast<fdpi::DataLinkType>(fpkt.dataLinkType));
+        auto result = decoder.decode(fpkt);
         if (!result) {
             // Output a row with just frame info and an error marker
             Row row(COLUMNS.size());

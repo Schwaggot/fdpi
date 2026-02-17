@@ -1,5 +1,5 @@
 --- packet 1 ---
-timestamp=1268912535
+timestamp=1268912535790688
 captureLength=42
 wireLength=42
 ethernet.src=00:25:b3:bf:91:ee
@@ -22,7 +22,7 @@ flow.dstPort=0
 flow.protocol=0
 payloadSize=0
 --- packet 2 ---
-timestamp=1268912535
+timestamp=1268912535791022
 captureLength=60
 wireLength=60
 ethernet.src=00:21:70:c0:56:f0
@@ -45,7 +45,7 @@ flow.dstPort=0
 flow.protocol=0
 payloadSize=0
 --- packet 3 ---
-timestamp=1268912535
+timestamp=1268912535791037
 captureLength=66
 wireLength=66
 ethernet.src=00:25:b3:bf:91:ee
@@ -82,7 +82,7 @@ flow.dstPort=80
 flow.protocol=6
 payloadSize=0
 --- packet 4 ---
-timestamp=1268912535
+timestamp=1268912535791198
 captureLength=60
 wireLength=60
 ethernet.src=00:21:70:c0:56:f0
@@ -119,7 +119,7 @@ flow.dstPort=1074
 flow.protocol=6
 payloadSize=6
 --- packet 5 ---
-timestamp=1268912536
+timestamp=1268912536289850
 captureLength=66
 wireLength=66
 ethernet.src=00:25:b3:bf:91:ee
@@ -156,7 +156,7 @@ flow.dstPort=80
 flow.protocol=6
 payloadSize=0
 --- packet 6 ---
-timestamp=1268912536
+timestamp=1268912536290050
 captureLength=60
 wireLength=60
 ethernet.src=00:21:70:c0:56:f0
@@ -193,7 +193,7 @@ flow.dstPort=1074
 flow.protocol=6
 payloadSize=6
 --- packet 7 ---
-timestamp=1268912536
+timestamp=1268912536789878
 captureLength=62
 wireLength=62
 ethernet.src=00:25:b3:bf:91:ee
@@ -230,7 +230,7 @@ flow.dstPort=80
 flow.protocol=6
 payloadSize=0
 --- packet 8 ---
-timestamp=1268912536
+timestamp=1268912536790195
 captureLength=60
 wireLength=60
 ethernet.src=00:21:70:c0:56:f0

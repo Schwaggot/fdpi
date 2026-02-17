@@ -515,7 +515,7 @@ void formatFlow(std::ostringstream& ss, const fdpi::FlowId& flow) {
 std::string formatPacket(uint32_t index, const fdpi::Packet& pkt) {
     std::ostringstream ss;
     ss << "--- packet " << index << " ---\n";
-    ss << "timestamp=" << pkt.timestamp << "\n";
+    ss << "timestamp=" << pkt.timestamp.time_since_epoch().count() << "\n";
     ss << "captureLength=" << pkt.captureLength << "\n";
     ss << "wireLength=" << pkt.wireLength << "\n";
 

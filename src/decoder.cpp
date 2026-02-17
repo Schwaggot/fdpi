@@ -69,7 +69,7 @@ PacketDecoder::PacketDecoder(Config config) : mImpl(std::make_unique<Impl>(confi
 PacketDecoder::~PacketDecoder() = default;
 
 std::expected<Packet, Error> PacketDecoder::decode(std::span<const uint8_t> data,
-                                                   uint64_t timestamp,
+                                                   Timestamp timestamp,
                                                    DataLinkType dlt) const {
     if (data.empty()) {
         return std::unexpected(Error::BufferTooSmall);
