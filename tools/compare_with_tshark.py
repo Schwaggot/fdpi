@@ -264,7 +264,7 @@ def normalize_value(field, val):
         "icmp.checksum", "icmpv6.checksum",
         "tls.record.version", "ipv6.tclass", "ipv6.flow",
         "arp.proto.type", "dhcp.id", "dhcp.flags",
-        "dhcp.hw.type",
+        "dhcp.hw.type", "dhcpv6.xid",
     }
     if field in hex_fields:
         return normalize_hex(val)
