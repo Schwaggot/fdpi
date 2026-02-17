@@ -1,6 +1,8 @@
 #include <fdpi/datalink.hpp>
 #include <fdpi/decoder.hpp>
 #include <gtest/gtest.h>
+
+#include <cstring>
 #include <vector>
 
 // ---- DLT_NULL (BSD Loopback) Tests ----
