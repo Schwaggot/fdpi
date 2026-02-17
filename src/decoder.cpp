@@ -1,5 +1,6 @@
 #include <fdpi/datalink.hpp>
 #include <fdpi/decoder.hpp>
+#include <fdpi/protocol/gtp.hpp>
 
 #include <string_view>
 #include <unordered_map>
@@ -24,6 +25,8 @@ constexpr uint8_t kProtoTCP = 6;
 constexpr uint8_t kProtoUDP = 17;
 constexpr uint8_t kProtoGRE = 47;
 constexpr uint8_t kProtoIPv6Frag = 44;
+constexpr uint8_t kProtoIGMP = 2;
+constexpr uint8_t kProtoESP = 50;
 constexpr uint8_t kProtoICMPv6 = 58;
 
 FlowId buildFlowId(const Packet& pkt) {
@@ -325,6 +328,25 @@ std::expected<Packet, Error> PacketDecoder::decode(std::span<const uint8_t> data
             return std::unexpected(icmpResult.error());
         }
         pkt.layer4 = *icmpResult;
+    } else if (l4Protocol == kProtoIGMP) {
+        auto igmpResult = decodeIgmp(data, offset);
+        if (!igmpResult) {
+            return std::unexpected(igmpResult.error());
+        }
+        pkt.layer4 = *igmpResult;
+    } else if (l4Protocol == kProtoESP) {
+        auto espResult = decodeEsp(data, offset);
+        if (!espResult) {
+            return std::unexpected(espResult.error());
+        }
+        pkt.layer4 = *espResult;
+        // ESP payload is encrypted — store as payload and return
+        if (offset < data.size()) {
+            pkt.payload.assign(data.begin() + static_cast<ptrdiff_t>(offset), data.end());
+        }
+        pkt.flowId = buildFlowId(pkt);
+        mImpl->flowTable.update(pkt);
+        return pkt;
     }
 
     // === Tunnel: VxLAN (UDP:4789) ===
@@ -373,6 +395,46 @@ std::expected<Packet, Error> PacketDecoder::decode(std::span<const uint8_t> data
             } else if (innerL4Proto == kProtoICMPv6) {
                 if (auto r = decodeIcmpv6(data, offset))
                     pkt.layer4 = *r;
+            }
+        }
+    }
+
+    // === Tunnel: GTP-U (UDP:2152) ===
+    constexpr uint16_t kGtpPort = 2152;
+    if (auto* udp = std::get_if<UDP>(&pkt.layer4);
+        udp && udp->dstPort == kGtpPort && offset < data.size()) {
+        auto gtpResult = decodeGtp(data, offset);
+        if (gtpResult) {
+            // Decode inner IP
+            if (offset < data.size()) {
+                uint8_t firstNibble = (data[offset] >> 4) & 0x0F;
+                uint8_t innerL4Proto = 0;
+                if (firstNibble == 4) {
+                    if (auto ip = decodeIPv4(data, offset)) {
+                        pkt.layer3 = *ip;
+                        innerL4Proto = ip->protocol;
+                    }
+                } else if (firstNibble == 6) {
+                    if (auto ip = decodeIPv6(data, offset)) {
+                        pkt.layer3 = *ip;
+                        innerL4Proto = ip->nextHeader;
+                    }
+                }
+
+                // Decode inner L4
+                if (innerL4Proto == kProtoTCP) {
+                    if (auto r = decodeTcp(data, offset))
+                        pkt.layer4 = *r;
+                } else if (innerL4Proto == kProtoUDP) {
+                    if (auto r = decodeUdp(data, offset))
+                        pkt.layer4 = *r;
+                } else if (innerL4Proto == kProtoICMP) {
+                    if (auto r = decodeIcmp(data, offset))
+                        pkt.layer4 = *r;
+                } else if (innerL4Proto == kProtoICMPv6) {
+                    if (auto r = decodeIcmpv6(data, offset))
+                        pkt.layer4 = *r;
+                }
             }
         }
     }
@@ -526,6 +588,64 @@ std::expected<Packet, Error> PacketDecoder::decode(std::span<const uint8_t> data
             }
             case AppProtocol::LDAP: {
                 if (auto result = decodeLdap(payloadSpan, l7Offset)) {
+                    pkt.layer7 = std::move(*result);
+                }
+                break;
+            }
+            case AppProtocol::MDNS:
+            case AppProtocol::LLMNR: {
+                if (auto result = decodeDns(payloadSpan, l7Offset)) {
+                    pkt.layer7 = std::move(*result);
+                }
+                break;
+            }
+            case AppProtocol::SSDP: {
+                if (auto result = decodeSsdp(payloadSpan, l7Offset)) {
+                    pkt.layer7 = std::move(*result);
+                }
+                break;
+            }
+            case AppProtocol::SrvLoc: {
+                if (auto result = decodeSrvloc(payloadSpan, l7Offset)) {
+                    pkt.layer7 = std::move(*result);
+                }
+                break;
+            }
+            case AppProtocol::NBNS: {
+                if (auto result = decodeNbns(payloadSpan, l7Offset)) {
+                    pkt.layer7 = std::move(*result);
+                }
+                break;
+            }
+            case AppProtocol::NBDGM: {
+                if (auto result = decodeNbdgm(payloadSpan, l7Offset)) {
+                    pkt.layer7 = std::move(*result);
+                }
+                break;
+            }
+            case AppProtocol::SMB: {
+                // TCP:139 (NetBIOS Session): skip 4-byte NBT session header
+                if (std::holds_alternative<TCP>(pkt.layer4)) {
+                    auto* tcp = std::get_if<TCP>(&pkt.layer4);
+                    if (tcp && (tcp->srcPort == 139 || tcp->dstPort == 139)) {
+                        if (payloadSpan.size() >= 4) {
+                            l7Offset = 4;
+                        }
+                    }
+                }
+                if (auto result = decodeSmb(payloadSpan, l7Offset)) {
+                    pkt.layer7 = std::move(*result);
+                }
+                break;
+            }
+            case AppProtocol::RTMP: {
+                if (auto result = decodeRtmp(payloadSpan, l7Offset)) {
+                    pkt.layer7 = std::move(*result);
+                }
+                break;
+            }
+            case AppProtocol::IMF: {
+                if (auto result = decodeImf(payloadSpan, l7Offset)) {
                     pkt.layer7 = std::move(*result);
                 }
                 break;

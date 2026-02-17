@@ -29,6 +29,24 @@ struct ProtocolDetectionEngine::Impl {
             dstPort = udp->dstPort;
         }
 
+        // mDNS: UDP port 5353
+        if (std::holds_alternative<UDP>(packet.layer4)) {
+            if (srcPort == 5353 || dstPort == 5353) {
+                if (payload.size() >= 12) {
+                    return AppProtocol::MDNS;
+                }
+            }
+        }
+
+        // LLMNR: UDP port 5355
+        if (std::holds_alternative<UDP>(packet.layer4)) {
+            if (srcPort == 5355 || dstPort == 5355) {
+                if (payload.size() >= 12) {
+                    return AppProtocol::LLMNR;
+                }
+            }
+        }
+
         // DNS: port 53
         if (srcPort == 53 || dstPort == 53) {
             if (payload.size() >= 12) {
@@ -202,6 +220,80 @@ struct ProtocolDetectionEngine::Impl {
                     if (payload[0] == 0x30) {
                         return AppProtocol::LDAP;
                     }
+                }
+            }
+        }
+
+        // SSDP: UDP port 1900
+        if (std::holds_alternative<UDP>(packet.layer4)) {
+            if (srcPort == 1900 || dstPort == 1900) {
+                if (payload.size() >= 4) {
+                    const std::string_view sv(
+                        reinterpret_cast<const char*>(payload.data()),
+                        std::min(payload.size(), static_cast<size_t>(16)));
+                    if (sv.starts_with("M-SEARCH") || sv.starts_with("NOTIFY") ||
+                        sv.starts_with("HTTP/")) {
+                        return AppProtocol::SSDP;
+                    }
+                }
+            }
+        }
+
+        // SrvLoc: UDP/TCP port 427
+        if (srcPort == 427 || dstPort == 427) {
+            if (payload.size() >= 5) {
+                uint8_t ver = payload[0];
+                if (ver == 1 || ver == 2) {
+                    return AppProtocol::SrvLoc;
+                }
+            }
+        }
+
+        // NBNS: UDP port 137
+        if (std::holds_alternative<UDP>(packet.layer4)) {
+            if (srcPort == 137 || dstPort == 137) {
+                if (payload.size() >= 12) {
+                    return AppProtocol::NBNS;
+                }
+            }
+        }
+
+        // NBDGM: UDP port 138
+        if (std::holds_alternative<UDP>(packet.layer4)) {
+            if (srcPort == 138 || dstPort == 138) {
+                if (payload.size() >= 10) {
+                    return AppProtocol::NBDGM;
+                }
+            }
+        }
+
+        // SMB: TCP ports 139/445
+        if (std::holds_alternative<TCP>(packet.layer4)) {
+            if (srcPort == 445 || dstPort == 445) {
+                if (payload.size() >= 4) {
+                    // Check for SMB1 or SMB2/3 magic
+                    if ((payload[0] == 0xFF || payload[0] == 0xFE) && payload[1] == 'S' &&
+                        payload[2] == 'M' && payload[3] == 'B') {
+                        return AppProtocol::SMB;
+                    }
+                }
+            }
+            if (srcPort == 139 || dstPort == 139) {
+                // Skip 4-byte NBT session header
+                if (payload.size() >= 8) {
+                    if ((payload[4] == 0xFF || payload[4] == 0xFE) && payload[5] == 'S' &&
+                        payload[6] == 'M' && payload[7] == 'B') {
+                        return AppProtocol::SMB;
+                    }
+                }
+            }
+        }
+
+        // RTMP: TCP port 1935
+        if (std::holds_alternative<TCP>(packet.layer4)) {
+            if (srcPort == 1935 || dstPort == 1935) {
+                if (payload.size() >= 1) {
+                    return AppProtocol::RTMP;
                 }
             }
         }

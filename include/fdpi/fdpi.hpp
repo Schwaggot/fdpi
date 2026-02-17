@@ -19,7 +19,11 @@
 #include <fdpi/protocol/mpls.hpp>
 #include <fdpi/protocol/dns.hpp>
 #include <fdpi/protocol/eapol.hpp>
+#include <fdpi/protocol/esp.hpp>
+#include <fdpi/protocol/gtp.hpp>
 #include <fdpi/protocol/http.hpp>
+#include <fdpi/protocol/igmp.hpp>
+#include <fdpi/protocol/imf.hpp>
 #include <fdpi/protocol/tls.hpp>
 #include <fdpi/protocol/quic.hpp>
 #include <fdpi/protocol/ftp.hpp>
@@ -34,6 +38,12 @@
 #include <fdpi/protocol/bgp.hpp>
 #include <fdpi/protocol/ntp.hpp>
 #include <fdpi/protocol/ldap.hpp>
+#include <fdpi/protocol/nbdgm.hpp>
+#include <fdpi/protocol/nbns.hpp>
+#include <fdpi/protocol/rtmp.hpp>
+#include <fdpi/protocol/smb.hpp>
+#include <fdpi/protocol/srvloc.hpp>
+#include <fdpi/protocol/ssdp.hpp>
 #include <fdpi/flow_id.hpp>
 #include <fdpi/timestamp.hpp>
 #include <fdpi/flow_table.hpp>

@@ -179,6 +179,20 @@ void formatICMPv6(std::ostringstream& ss, const fdpi::ICMPv6& icmp) {
     ss << "icmpv6.restOfHeader=" << hex32(icmp.restOfHeader) << "\n";
 }
 
+void formatIGMP(std::ostringstream& ss, const fdpi::IGMP& igmp) {
+    ss << "layer4=IGMP\n";
+    ss << "igmp.type=" << hex8(igmp.type) << "\n";
+    ss << "igmp.maxRespTime=" << static_cast<int>(igmp.maxRespTime) << "\n";
+    ss << "igmp.checksum=" << hex16(igmp.checksum) << "\n";
+    ss << "igmp.groupAddress=" << igmp.groupAddress.toString() << "\n";
+}
+
+void formatESP(std::ostringstream& ss, const fdpi::ESP& esp) {
+    ss << "layer4=ESP\n";
+    ss << "esp.spi=" << hex32(esp.spi) << "\n";
+    ss << "esp.sequenceNumber=" << esp.sequenceNumber << "\n";
+}
+
 // --- Layer 7 ---
 
 void formatDNS(std::ostringstream& ss, const fdpi::DNS& dns) {
@@ -431,6 +445,119 @@ void formatLDAP(std::ostringstream& ss, const fdpi::LDAP& ldap) {
     }
 }
 
+void formatSSDP(std::ostringstream& ss, const fdpi::SSDP& ssdp) {
+    ss << "layer7=SSDP\n";
+    ss << "ssdp.isRequest=" << (ssdp.isRequest ? "true" : "false") << "\n";
+    ss << "ssdp.method=" << ssdp.method << "\n";
+    ss << "ssdp.uri=" << ssdp.uri << "\n";
+    ss << "ssdp.statusCode=" << ssdp.statusCode << "\n";
+    ss << "ssdp.headers.count=" << ssdp.headers.size() << "\n";
+    for (size_t i = 0; i < ssdp.headers.size(); ++i) {
+        ss << "ssdp.headers[" << i << "].name=" << ssdp.headers[i].first << "\n";
+        ss << "ssdp.headers[" << i << "].value=" << ssdp.headers[i].second << "\n";
+    }
+}
+
+void formatSrvLoc(std::ostringstream& ss, const fdpi::SrvLoc& slp) {
+    ss << "layer7=SrvLoc\n";
+    ss << "srvloc.version=" << static_cast<int>(slp.version) << "\n";
+    ss << "srvloc.functionId=" << static_cast<int>(slp.functionId) << "\n";
+    ss << "srvloc.length=" << slp.length << "\n";
+    ss << "srvloc.xid=" << slp.xid << "\n";
+    if (!slp.languageTag.empty()) {
+        ss << "srvloc.languageTag=" << slp.languageTag << "\n";
+    }
+}
+
+void formatNBNS(std::ostringstream& ss, const fdpi::NBNS& nbns) {
+    ss << "layer7=NBNS\n";
+    ss << "nbns.id=" << hex16(nbns.id) << "\n";
+    ss << "nbns.isResponse=" << (nbns.isResponse ? "true" : "false") << "\n";
+    ss << "nbns.opcode=" << static_cast<int>(nbns.opcode) << "\n";
+    ss << "nbns.rcode=" << static_cast<int>(nbns.rcode) << "\n";
+    ss << "nbns.questions.count=" << nbns.questions.size() << "\n";
+    for (size_t i = 0; i < nbns.questions.size(); ++i) {
+        ss << "nbns.questions[" << i << "].name=" << nbns.questions[i].name << "\n";
+        ss << "nbns.questions[" << i << "].type=" << nbns.questions[i].type << "\n";
+        ss << "nbns.questions[" << i << "].class=" << nbns.questions[i].qclass << "\n";
+    }
+    ss << "nbns.answers.count=" << nbns.answers.size() << "\n";
+    for (size_t i = 0; i < nbns.answers.size(); ++i) {
+        ss << "nbns.answers[" << i << "].name=" << nbns.answers[i].name << "\n";
+        ss << "nbns.answers[" << i << "].type=" << nbns.answers[i].type << "\n";
+        ss << "nbns.answers[" << i << "].ttl=" << nbns.answers[i].ttl << "\n";
+        ss << "nbns.answers[" << i << "].rdataSize=" << nbns.answers[i].rdata.size()
+           << "\n";
+    }
+}
+
+void formatNBDGM(std::ostringstream& ss, const fdpi::NBDGM& nbdgm) {
+    ss << "layer7=NBDGM\n";
+    ss << "nbdgm.messageType=" << hex8(nbdgm.messageType) << "\n";
+    ss << "nbdgm.flags=" << hex8(nbdgm.flags) << "\n";
+    ss << "nbdgm.dgmId=" << nbdgm.dgmId << "\n";
+    ss << "nbdgm.sourceIp=" << nbdgm.sourceIp.toString() << "\n";
+    ss << "nbdgm.sourcePort=" << nbdgm.sourcePort << "\n";
+    if (nbdgm.messageType >= 0x10 && nbdgm.messageType <= 0x12) {
+        ss << "nbdgm.dgmLength=" << nbdgm.dgmLength << "\n";
+        ss << "nbdgm.packetOffset=" << nbdgm.packetOffset << "\n";
+        ss << "nbdgm.sourceName=" << nbdgm.sourceName << "\n";
+        ss << "nbdgm.destinationName=" << nbdgm.destinationName << "\n";
+    }
+}
+
+void formatSMB(std::ostringstream& ss, const fdpi::SMB& smb) {
+    ss << "layer7=SMB\n";
+    ss << "smb.version=" << static_cast<int>(smb.version) << "\n";
+    ss << "smb.command=" << hex8(smb.command) << "\n";
+    ss << "smb.status=" << hex32(smb.status) << "\n";
+    ss << "smb.tid=" << smb.tid << "\n";
+    ss << "smb.uid=" << smb.uid << "\n";
+    ss << "smb.mid=" << smb.mid << "\n";
+    ss << "smb.flags=" << hex8(smb.flags) << "\n";
+    if (smb.version == 1) {
+        ss << "smb.flags2=" << hex16(smb.flags2) << "\n";
+    }
+}
+
+void formatRTMP(std::ostringstream& ss, const fdpi::RTMP& rtmp) {
+    ss << "layer7=RTMP\n";
+    ss << "rtmp.isHandshake=" << (rtmp.isHandshake ? "true" : "false") << "\n";
+    if (rtmp.isHandshake) {
+        ss << "rtmp.handshakeType=" << static_cast<int>(rtmp.handshakeType) << "\n";
+    } else {
+        ss << "rtmp.chunkType=" << static_cast<int>(rtmp.chunkType) << "\n";
+        ss << "rtmp.chunkStreamId=" << rtmp.chunkStreamId << "\n";
+        ss << "rtmp.timestamp=" << rtmp.timestamp << "\n";
+        ss << "rtmp.messageLength=" << rtmp.messageLength << "\n";
+        ss << "rtmp.messageTypeId=" << static_cast<int>(rtmp.messageTypeId) << "\n";
+        ss << "rtmp.messageStreamId=" << rtmp.messageStreamId << "\n";
+    }
+}
+
+void formatIMF(std::ostringstream& ss, const fdpi::IMF& imf) {
+    ss << "layer7=IMF\n";
+    if (!imf.from.empty()) {
+        ss << "imf.from=" << imf.from << "\n";
+    }
+    if (!imf.to.empty()) {
+        ss << "imf.to=" << imf.to << "\n";
+    }
+    if (!imf.subject.empty()) {
+        ss << "imf.subject=" << imf.subject << "\n";
+    }
+    if (!imf.date.empty()) {
+        ss << "imf.date=" << imf.date << "\n";
+    }
+    if (!imf.messageId.empty()) {
+        ss << "imf.messageId=" << imf.messageId << "\n";
+    }
+    if (!imf.contentType.empty()) {
+        ss << "imf.contentType=" << imf.contentType << "\n";
+    }
+    ss << "imf.headers.count=" << imf.headers.size() << "\n";
+}
+
 // --- Variant dispatchers ---
 
 void formatLayer3(std::ostringstream& ss,
@@ -458,10 +585,14 @@ void formatLayer3(std::ostringstream& ss,
         layer3);
 }
 
-void formatLayer4(
-    std::ostringstream& ss,
-    const std::variant<std::monostate, fdpi::TCP, fdpi::UDP, fdpi::ICMP, fdpi::ICMPv6>&
-        layer4) {
+void formatLayer4(std::ostringstream& ss,
+                  const std::variant<std::monostate,
+                                     fdpi::TCP,
+                                     fdpi::UDP,
+                                     fdpi::ICMP,
+                                     fdpi::ICMPv6,
+                                     fdpi::IGMP,
+                                     fdpi::ESP>& layer4) {
     std::visit(
         [&ss](const auto& v) {
             using T = std::decay_t<decltype(v)>;
@@ -473,6 +604,10 @@ void formatLayer4(
                 formatICMP(ss, v);
             } else if constexpr (std::is_same_v<T, fdpi::ICMPv6>) {
                 formatICMPv6(ss, v);
+            } else if constexpr (std::is_same_v<T, fdpi::IGMP>) {
+                formatIGMP(ss, v);
+            } else if constexpr (std::is_same_v<T, fdpi::ESP>) {
+                formatESP(ss, v);
             }
         },
         layer4);
@@ -495,7 +630,14 @@ void formatLayer7(std::ostringstream& ss,
                                      fdpi::RDP,
                                      fdpi::BGP,
                                      fdpi::NTP,
-                                     fdpi::LDAP>& layer7) {
+                                     fdpi::LDAP,
+                                     fdpi::SSDP,
+                                     fdpi::SrvLoc,
+                                     fdpi::NBNS,
+                                     fdpi::NBDGM,
+                                     fdpi::SMB,
+                                     fdpi::RTMP,
+                                     fdpi::IMF>& layer7) {
     std::visit(
         [&ss](const auto& v) {
             using T = std::decay_t<decltype(v)>;
@@ -531,6 +673,20 @@ void formatLayer7(std::ostringstream& ss,
                 formatNTP(ss, v);
             } else if constexpr (std::is_same_v<T, fdpi::LDAP>) {
                 formatLDAP(ss, v);
+            } else if constexpr (std::is_same_v<T, fdpi::SSDP>) {
+                formatSSDP(ss, v);
+            } else if constexpr (std::is_same_v<T, fdpi::SrvLoc>) {
+                formatSrvLoc(ss, v);
+            } else if constexpr (std::is_same_v<T, fdpi::NBNS>) {
+                formatNBNS(ss, v);
+            } else if constexpr (std::is_same_v<T, fdpi::NBDGM>) {
+                formatNBDGM(ss, v);
+            } else if constexpr (std::is_same_v<T, fdpi::SMB>) {
+                formatSMB(ss, v);
+            } else if constexpr (std::is_same_v<T, fdpi::RTMP>) {
+                formatRTMP(ss, v);
+            } else if constexpr (std::is_same_v<T, fdpi::IMF>) {
+                formatIMF(ss, v);
             }
         },
         layer7);
