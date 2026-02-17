@@ -13,10 +13,12 @@
 #include <fdpi/protocol/rarp.hpp>
 #include <fdpi/protocol/tcp.hpp>
 #include <fdpi/protocol/udp.hpp>
+#include <fdpi/protocol/wifi.hpp>
 #include <fdpi/protocol/icmp.hpp>
 #include <fdpi/protocol/gre.hpp>
 #include <fdpi/protocol/mpls.hpp>
 #include <fdpi/protocol/dns.hpp>
+#include <fdpi/protocol/eapol.hpp>
 #include <fdpi/protocol/http.hpp>
 #include <fdpi/protocol/tls.hpp>
 #include <fdpi/protocol/quic.hpp>

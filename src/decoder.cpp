@@ -16,6 +16,7 @@ constexpr uint16_t kEtherTypeRARP = 0x8035;
 constexpr uint16_t kEtherTypeVLAN = 0x8100;
 constexpr uint16_t kEtherTypeQinQ = 0x88A8;
 constexpr uint16_t kEtherTypeMPLS = 0x8847;
+constexpr uint16_t kEtherTypeEAPOL = 0x888E;
 
 // IP protocol constants
 constexpr uint8_t kProtoICMP = 1;
@@ -128,6 +129,10 @@ std::expected<Packet, Error> PacketDecoder::decode(std::span<const uint8_t> data
             return std::unexpected(linkResult.error());
         }
         etherType = linkResult->etherType;
+
+        if (linkResult->wifi) {
+            pkt.wifi = *linkResult->wifi;
+        }
 
         if (linkResult->hasMacs) {
             Ethernet eth{};
@@ -251,6 +256,14 @@ std::expected<Packet, Error> PacketDecoder::decode(std::span<const uint8_t> data
         pkt.layer3 = *rarpResult;
         pkt.flowId = buildFlowId(pkt);
         return pkt; // RARP has no L4
+    } else if (etherType == kEtherTypeEAPOL) {
+        auto eapolResult = decodeEapol(data, offset);
+        if (!eapolResult) {
+            return std::unexpected(eapolResult.error());
+        }
+        pkt.layer3 = *eapolResult;
+        pkt.flowId = buildFlowId(pkt);
+        return pkt; // EAPOL has no L4
     } else {
         // Unsupported L3 protocol — store remaining as payload
         pkt.payload.assign(data.begin() + static_cast<ptrdiff_t>(offset), data.end());
@@ -449,9 +462,8 @@ std::expected<Packet, Error> PacketDecoder::decode(std::span<const uint8_t> data
                 auto& state = mImpl->pop3States[pkt.flowId];
 
                 if (state.inDataMode) {
-                    std::string_view sv(
-                        reinterpret_cast<const char*>(payloadSpan.data()),
-                        payloadSpan.size());
+                    std::string_view sv(reinterpret_cast<const char*>(payloadSpan.data()),
+                                        payloadSpan.size());
                     if (sv.starts_with(".\r\n") ||
                         sv.find("\r\n.\r\n") != std::string_view::npos) {
                         state.inDataMode = false;
@@ -468,8 +480,7 @@ std::expected<Packet, Error> PacketDecoder::decode(std::span<const uint8_t> data
                 if (!pop3.isResponse) {
                     bool multiline =
                         (pop3.command == "RETR" || pop3.command == "TOP") ||
-                        ((pop3.command == "LIST" ||
-                          pop3.command == "UIDL") &&
+                        ((pop3.command == "LIST" || pop3.command == "UIDL") &&
                          pop3.argument.empty());
                     if (multiline) {
                         auto rev = reverseFlowId(pkt.flowId);

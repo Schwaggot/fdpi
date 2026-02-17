@@ -12,6 +12,7 @@
 #include <fdpi/protocol/bgp.hpp>
 #include <fdpi/protocol/dhcp.hpp>
 #include <fdpi/protocol/dhcpv6.hpp>
+#include <fdpi/protocol/eapol.hpp>
 #include <fdpi/protocol/dns.hpp>
 #include <fdpi/protocol/ethernet.hpp>
 #include <fdpi/protocol/ftp.hpp>
@@ -34,6 +35,7 @@
 #include <fdpi/protocol/tcp.hpp>
 #include <fdpi/protocol/tls.hpp>
 #include <fdpi/protocol/udp.hpp>
+#include <fdpi/protocol/wifi.hpp>
 #include <fdpi/timestamp.hpp>
 
 namespace fdpi {
@@ -41,10 +43,11 @@ namespace fdpi {
 struct Packet {
     // Link layer
     std::optional<Ethernet> ethernet;
+    std::optional<WiFi> wifi;
     std::optional<VlanTag> vlan;
 
     // Network layer
-    std::variant<std::monostate, IPv4, IPv6, ARP, RARP> layer3;
+    std::variant<std::monostate, IPv4, IPv6, ARP, RARP, EAPOL> layer3;
 
     // Transport layer
     std::variant<std::monostate, TCP, UDP, ICMP, ICMPv6> layer4;

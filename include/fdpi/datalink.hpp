@@ -3,25 +3,27 @@
 
 #include <fdpi/address.hpp>
 #include <fdpi/error.hpp>
+#include <fdpi/protocol/wifi.hpp>
 
 #include <cstdint>
 #include <expected>
+#include <optional>
 #include <span>
 #include <string_view>
 
 namespace fdpi {
 
 enum class DataLinkType : uint16_t {
-    DLT_NULL = 0,         // BSD loopback (4-byte AF family)
-    DLT_EN10MB = 1,       // Ethernet (14-byte header)
-    DLT_IEEE802_5 = 6,    // Token Ring
-    DLT_PPP = 9,          // Point-to-Point Protocol
-    DLT_FDDI = 10,        // FDDI
-    DLT_RAW = 101,        // Raw IP (no L2 header)
-    DLT_IEEE802_11 = 105,         // 802.11 WiFi
-    DLT_LINUX_SLL = 113,          // Linux cooked capture v1
+    DLT_NULL = 0,                  // BSD loopback (4-byte AF family)
+    DLT_EN10MB = 1,                // Ethernet (14-byte header)
+    DLT_IEEE802_5 = 6,             // Token Ring
+    DLT_PPP = 9,                   // Point-to-Point Protocol
+    DLT_FDDI = 10,                 // FDDI
+    DLT_RAW = 101,                 // Raw IP (no L2 header)
+    DLT_IEEE802_11 = 105,          // 802.11 WiFi
+    DLT_LINUX_SLL = 113,           // Linux cooked capture v1
     DLT_IEEE802_11_RADIOTAP = 127, // 802.11 WiFi + radiotap header
-    DLT_LINUX_SLL2 = 276,         // Linux cooked capture v2
+    DLT_LINUX_SLL2 = 276,          // Linux cooked capture v2
 };
 
 struct LinkLayerResult {
@@ -29,6 +31,7 @@ struct LinkLayerResult {
     bool hasMacs{false};
     MacAddress srcMac;
     MacAddress dstMac;
+    std::optional<WiFi> wifi;
 };
 
 std::expected<LinkLayerResult, Error>

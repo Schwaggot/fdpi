@@ -48,6 +48,27 @@ void formatEthernet(std::ostringstream& ss, const fdpi::Ethernet& eth) {
     ss << "ethernet.etherType=" << hex16(eth.etherType) << "\n";
 }
 
+void formatWifi(std::ostringstream& ss, const fdpi::WiFi& wifi) {
+    ss << "wifi.type=" << static_cast<int>(wifi.type) << "\n";
+    ss << "wifi.subtype=" << static_cast<int>(wifi.subtype) << "\n";
+    ss << "wifi.toDS=" << (wifi.toDS ? "true" : "false") << "\n";
+    ss << "wifi.fromDS=" << (wifi.fromDS ? "true" : "false") << "\n";
+    ss << "wifi.protectedFrame=" << (wifi.protectedFrame ? "true" : "false") << "\n";
+    ss << "wifi.retry=" << (wifi.retry ? "true" : "false") << "\n";
+    ss << "wifi.durationId=" << wifi.durationId << "\n";
+    ss << "wifi.addr1=" << wifi.addr1.toString() << "\n";
+    if (wifi.addr2) {
+        ss << "wifi.addr2=" << wifi.addr2->toString() << "\n";
+    }
+    if (wifi.addr3) {
+        ss << "wifi.addr3=" << wifi.addr3->toString() << "\n";
+    }
+    if (wifi.addr4) {
+        ss << "wifi.addr4=" << wifi.addr4->toString() << "\n";
+    }
+    ss << "wifi.sequenceControl=" << wifi.sequenceControl << "\n";
+}
+
 void formatVlan(std::ostringstream& ss, const fdpi::VlanTag& vlan) {
     ss << "vlan.id=" << vlan.vlanId() << "\n";
     ss << "vlan.priority=" << static_cast<int>(vlan.priority()) << "\n";
@@ -96,6 +117,14 @@ void formatARP(std::ostringstream& ss, const fdpi::ARP& arp) {
     ss << "arp.senderIp=" << arp.senderIp.toString() << "\n";
     ss << "arp.targetMac=" << arp.targetMac.toString() << "\n";
     ss << "arp.targetIp=" << arp.targetIp.toString() << "\n";
+}
+
+void formatEAPOL(std::ostringstream& ss, const fdpi::EAPOL& eapol) {
+    ss << "layer3=EAPOL\n";
+    ss << "eapol.version=" << static_cast<int>(eapol.version) << "\n";
+    ss << "eapol.type=" << static_cast<int>(eapol.type) << "\n";
+    ss << "eapol.bodyLength=" << eapol.bodyLength << "\n";
+    ss << "eapol.bodySize=" << eapol.body.size() << "\n";
 }
 
 void formatRARP(std::ostringstream& ss, const fdpi::RARP& rarp) {
@@ -404,10 +433,13 @@ void formatLDAP(std::ostringstream& ss, const fdpi::LDAP& ldap) {
 
 // --- Variant dispatchers ---
 
-void formatLayer3(
-    std::ostringstream& ss,
-    const std::variant<std::monostate, fdpi::IPv4, fdpi::IPv6, fdpi::ARP, fdpi::RARP>&
-        layer3) {
+void formatLayer3(std::ostringstream& ss,
+                  const std::variant<std::monostate,
+                                     fdpi::IPv4,
+                                     fdpi::IPv6,
+                                     fdpi::ARP,
+                                     fdpi::RARP,
+                                     fdpi::EAPOL>& layer3) {
     std::visit(
         [&ss](const auto& v) {
             using T = std::decay_t<decltype(v)>;
@@ -419,6 +451,8 @@ void formatLayer3(
                 formatARP(ss, v);
             } else if constexpr (std::is_same_v<T, fdpi::RARP>) {
                 formatRARP(ss, v);
+            } else if constexpr (std::is_same_v<T, fdpi::EAPOL>) {
+                formatEAPOL(ss, v);
             }
         },
         layer3);
@@ -521,6 +555,9 @@ std::string formatPacket(uint32_t index, const fdpi::Packet& pkt) {
 
     if (pkt.ethernet) {
         formatEthernet(ss, *pkt.ethernet);
+    }
+    if (pkt.wifi) {
+        formatWifi(ss, *pkt.wifi);
     }
     if (pkt.vlan) {
         formatVlan(ss, *pkt.vlan);

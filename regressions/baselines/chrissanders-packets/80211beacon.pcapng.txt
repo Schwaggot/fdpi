@@ -1,2 +1,24 @@
 --- packet 1 ---
-error=UnsupportedProtocol
+timestamp=1170365864256918
+captureLength=132
+wireLength=132
+ethernet.src=00:13:46:0b:22:ba
+ethernet.dst=ff:ff:ff:ff:ff:ff
+ethernet.etherType=0x0000
+wifi.type=0
+wifi.subtype=8
+wifi.toDS=false
+wifi.fromDS=false
+wifi.protectedFrame=false
+wifi.retry=false
+wifi.durationId=0
+wifi.addr1=ff:ff:ff:ff:ff:ff
+wifi.addr2=00:13:46:0b:22:ba
+wifi.addr3=00:13:46:0b:22:ba
+wifi.sequenceControl=21632
+flow.srcIp=0.0.0.0
+flow.dstIp=0.0.0.0
+flow.srcPort=0
+flow.dstPort=0
+flow.protocol=0
+payloadSize=108

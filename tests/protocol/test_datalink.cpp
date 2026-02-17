@@ -393,15 +393,17 @@ TEST(DataLink, WifiDataFrameFromAP) {
     EXPECT_EQ(result->srcMac.bytes[0], 0xC1); // SA from addr3
 }
 
-TEST(DataLink, WifiNonDataFrame) {
-    // Management frame (type=0): should be rejected
+TEST(DataLink, WifiManagementFrame) {
+    // Management frame (type=0): should succeed with etherType=0
     // FC byte 0 = 0x00 (type=0 management, subtype=0)
     std::vector<uint8_t> data(32, 0);
     data[0] = 0x00; // Management frame
     size_t offset = 0;
     auto result = fdpi::resolveDataLink(fdpi::DataLinkType::DLT_IEEE802_11, data, offset);
-    ASSERT_FALSE(result.has_value());
-    EXPECT_EQ(result.error(), fdpi::Error::UnsupportedProtocol);
+    ASSERT_TRUE(result.has_value());
+    EXPECT_EQ(result->etherType, 0);
+    ASSERT_TRUE(result->wifi.has_value());
+    EXPECT_EQ(result->wifi->type, 0); // Management
 }
 
 TEST(DataLink, WifiTruncated) {
@@ -444,15 +446,15 @@ TEST(DataLink, RadiotapDataFrame) {
                                  0x00,       // pad
                                  0x08, 0x00, // length (LE) = 8
                                  0x00, 0x00, 0x00,
-                                 0x00, // present flags
-                                       // 802.11 data frame (IBSS, 24 bytes)
+                                 0x00,       // present flags
+                                             // 802.11 data frame (IBSS, 24 bytes)
                                  0x08, 0x00, // Frame control (data frame)
                                  0x00, 0x00, // Duration
                                  0xA1, 0xA2, 0xA3, 0xA4, 0xA5, 0xA6, // addr1 (DA)
                                  0xB1, 0xB2, 0xB3, 0xB4, 0xB5, 0xB6, // addr2 (SA)
                                  0xC1, 0xC2, 0xC3, 0xC4, 0xC5, 0xC6, // addr3 (BSSID)
                                  0x00, 0x00,                         // Sequence control
-                                             // LLC/SNAP (8 bytes)
+                                                                     // LLC/SNAP (8 bytes)
                                  0xAA, 0xAA, 0x03, 0x00, 0x00, 0x00, 0x08, 0x00};
     size_t offset = 0;
     auto result =
@@ -518,15 +520,17 @@ TEST(DataLink, RadiotapLengthExceedsData) {
 }
 
 TEST(DataLink, RadiotapManagementFrame) {
-    // Radiotap + management frame → UnsupportedProtocol
+    // Radiotap + management frame → success with etherType=0
     std::vector<uint8_t> data(40, 0);
     data[2] = 0x08; // radiotap length = 8
     data[8] = 0x00; // Frame control: management frame (type=0)
     size_t offset = 0;
     auto result =
         fdpi::resolveDataLink(fdpi::DataLinkType::DLT_IEEE802_11_RADIOTAP, data, offset);
-    ASSERT_FALSE(result.has_value());
-    EXPECT_EQ(result.error(), fdpi::Error::UnsupportedProtocol);
+    ASSERT_TRUE(result.has_value());
+    EXPECT_EQ(result->etherType, 0);
+    ASSERT_TRUE(result->wifi.has_value());
+    EXPECT_EQ(result->wifi->type, 0); // Management
 }
 
 // ---- toString Tests ----

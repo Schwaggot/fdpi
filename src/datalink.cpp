@@ -280,10 +280,9 @@ std::expected<LinkLayerResult, Error> decodeFddi(std::span<const uint8_t> data,
 // --- DLT_IEEE802_11: WiFi ---
 std::expected<LinkLayerResult, Error> decodeWifi(std::span<const uint8_t> data,
                                                  size_t& offset) {
-    // Minimum: frame control(2) + duration(2) + addr1(6) + addr2(6) + addr3(6) + seq(2) =
-    // 24
-    constexpr size_t kMinHeaderSize = 24;
-    if (data.size() < offset + kMinHeaderSize) {
+    // Minimum for any frame: frame control(2) + duration(2) + addr1(6) = 10
+    constexpr size_t kAbsMinSize = 10;
+    if (data.size() < offset + kAbsMinSize) {
         return std::unexpected(Error::TruncatedHeader);
     }
     const uint8_t* p = data.data() + offset;
@@ -291,22 +290,89 @@ std::expected<LinkLayerResult, Error> decodeWifi(std::span<const uint8_t> data,
 
     // Frame type (bits 2-3), subtype (bits 4-7)
     uint8_t frameType = (frameControl >> 2) & 0x03;
-    if (frameType != 2) {
-        // Only data frames supported
-        return std::unexpected(Error::UnsupportedProtocol);
-    }
-
+    uint8_t subtype = (frameControl >> 4) & 0x0F;
     bool toDS = (frameControl & 0x0100) != 0;
     bool fromDS = (frameControl & 0x0200) != 0;
+    bool protectedFrame = (frameControl & 0x4000) != 0;
+    bool retry = (frameControl & 0x0800) != 0;
 
-    size_t hdrSize = kMinHeaderSize;
+    // Populate WiFi metadata common to all frame types
+    WiFi wifi{};
+    wifi.type = frameType;
+    wifi.subtype = subtype;
+    wifi.toDS = toDS;
+    wifi.fromDS = fromDS;
+    wifi.protectedFrame = protectedFrame;
+    wifi.retry = retry;
+    wifi.durationId = read16BE(p + 2);
+    wifi.addr1 = readMac(p + 4);
+
+    LinkLayerResult result{};
+
+    if (frameType == 1) {
+        // --- Control frames ---
+        // ACK/CTS: only addr1 (10 bytes min)
+        // RTS/CF-End/CF-End+CF-Ack/BlockAck/BlockAckReq: addr1 + addr2 (16 bytes min)
+        bool hasAddr2 = (subtype == 0x0B || // RTS
+                         subtype == 0x0E || // CF-End
+                         subtype == 0x0F || // CF-End+CF-Ack
+                         subtype == 0x08 || // BlockAckReq
+                         subtype == 0x09);  // BlockAck
+
+        if (hasAddr2) {
+            constexpr size_t kCtrlAddr2Size = 16;
+            if (data.size() < offset + kCtrlAddr2Size) {
+                return std::unexpected(Error::TruncatedHeader);
+            }
+            wifi.addr2 = readMac(p + 10);
+            offset += kCtrlAddr2Size;
+        } else {
+            offset += kAbsMinSize;
+        }
+
+        result.hasMacs = true;
+        result.dstMac = wifi.addr1;
+        if (wifi.addr2) {
+            result.srcMac = *wifi.addr2;
+        }
+        result.etherType = 0;
+        result.wifi = wifi;
+        return result;
+    }
+
+    if (frameType == 0) {
+        // --- Management frames ---
+        // 24-byte min: FC(2) + Dur(2) + addr1(6) + addr2(6) + addr3(6) + seq(2)
+        constexpr size_t kMgmtHeaderSize = 24;
+        if (data.size() < offset + kMgmtHeaderSize) {
+            return std::unexpected(Error::TruncatedHeader);
+        }
+        wifi.addr2 = readMac(p + 10);
+        wifi.addr3 = readMac(p + 16);
+        wifi.sequenceControl = static_cast<uint16_t>(p[22] | (p[23] << 8));
+
+        result.hasMacs = true;
+        result.dstMac = wifi.addr1;  // DA
+        result.srcMac = *wifi.addr2; // SA
+        result.etherType = 0;
+        result.wifi = wifi;
+        offset += kMgmtHeaderSize;
+        return result;
+    }
+
+    // --- Data frames (type 2) ---
+    constexpr size_t kDataHeaderSize = 24;
+    if (data.size() < offset + kDataHeaderSize) {
+        return std::unexpected(Error::TruncatedHeader);
+    }
+
+    size_t hdrSize = kDataHeaderSize;
     // 4-address header when both ToDS and FromDS are set (WDS)
     if (toDS && fromDS) {
         hdrSize = 30;
     }
 
     // QoS data frames (subtype bit 3 set) have 2 extra bytes
-    uint8_t subtype = (frameControl >> 4) & 0x0F;
     if (subtype & 0x08) {
         hdrSize += 2;
     }
@@ -315,9 +381,15 @@ std::expected<LinkLayerResult, Error> decodeWifi(std::span<const uint8_t> data,
         return std::unexpected(Error::TruncatedHeader);
     }
 
+    // Parse addresses
+    wifi.addr2 = readMac(p + 10);
+    wifi.addr3 = readMac(p + 16);
+    wifi.sequenceControl = static_cast<uint16_t>(p[22] | (p[23] << 8));
+    if (toDS && fromDS) {
+        wifi.addr4 = readMac(p + 24);
+    }
+
     // Extract MACs based on ToDS/FromDS flags
-    // addr1 @ +4, addr2 @ +10, addr3 @ +16, addr4 @ +24 (if present)
-    LinkLayerResult result{};
     result.hasMacs = true;
     if (!toDS && !fromDS) {
         // IBSS: DA=addr1, SA=addr2
@@ -339,12 +411,29 @@ std::expected<LinkLayerResult, Error> decodeWifi(std::span<const uint8_t> data,
 
     offset += hdrSize;
 
+    // Null data frames (subtype 4, 5, 6, 7, 12, 13, 14, 15)
+    // carry no payload — skip LLC/SNAP
+    if (subtype == 4 || subtype == 5 || subtype == 6 || subtype == 7 || subtype == 12 ||
+        subtype == 13 || subtype == 14 || subtype == 15) {
+        result.etherType = 0;
+        result.wifi = wifi;
+        return result;
+    }
+
+    // Encrypted (Protected Frame) data — payload is ciphertext, skip LLC/SNAP
+    if (protectedFrame) {
+        result.etherType = 0;
+        result.wifi = wifi;
+        return result;
+    }
+
     // Decode LLC/SNAP following the 802.11 header
     auto snapResult = decodeLlcSnap(data, offset);
     if (!snapResult) {
         return std::unexpected(snapResult.error());
     }
     result.etherType = *snapResult;
+    result.wifi = wifi;
     return result;
 }
 
