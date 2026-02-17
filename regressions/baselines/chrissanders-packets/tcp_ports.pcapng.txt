@@ -609,13 +609,6 @@ tcp.flags=0x10
 tcp.window=58
 tcp.checksum=0x9837
 tcp.urgentPointer=0
-layer7=HTTP
-http.isRequest=true
-http.method=ate>Thu,
-http.uri=07
-http.statusCode=0
-http.version=
-http.headers.count=0
 flow.srcIp=212.58.226.142
 flow.dstIp=172.16.16.128
 flow.srcPort=80
@@ -653,13 +646,6 @@ tcp.flags=0x10
 tcp.window=58
 tcp.checksum=0x6fde
 tcp.urgentPointer=0
-layer7=HTTP
-http.isRequest=true
-http.method=ategory><media:thumbnail
-http.uri=width="66"
-http.statusCode=0
-http.version=
-http.headers.count=0
 flow.srcIp=212.58.226.142
 flow.dstIp=172.16.16.128
 flow.srcPort=80
@@ -20100,13 +20086,6 @@ tcp.flags=0x10
 tcp.window=63
 tcp.checksum=0x06d5
 tcp.urgentPointer=0
-layer7=HTTP
-http.isRequest=true
-http.method=S“Ó•jµV«sÔËT
-http.uri=†-"ˆ®RtËnI„z	í†3¶ªÝ:$ÎJNHj_Hû&BRHy~&›Éå²Å|._ÈçsÙTŠ?G@RœÂ²ñ¶<â¬ì›îùL(×•ÞÀÕªÚ„r“VÒ¥¬“É*Ž•ƒ‰rs²”¬ZÇ:ÕU£3$3†Ekf¸B»kôÌ–èÎ§ï2Ÿ¢hCƒ¼ÅéÎy½¯¯à÷R]9¯ƒ,Å´ìÿíy
-http.statusCode=0
-http.version=
-http.headers.count=0
 flow.srcIp=67.228.110.120
 flow.dstIp=172.16.16.128
 flow.srcPort=80

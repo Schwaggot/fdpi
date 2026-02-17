@@ -6783,13 +6783,6 @@ tcp.flags=0x10
 tcp.window=3720
 tcp.checksum=0x9039
 tcp.urgentPointer=0
-layer7=HTTP
-http.isRequest=true
-http.method==¯>ÅØ|²—}Y.;°Bw4ŸägzšŸ¡v™ˆHwÚô{¨ˆPJbÔŠlz”ê-B		‡¿„.G¢I…FŠ1_ôÙØAJ
-http.uri=Oà¾÷UóF·&óí÷İUòfš˜÷jbpÉõøŸ:¸5VO"–GíèÉËjL"C²ıûá•œ½ŸWØƒüÇ…3ÿŠø6ğœÀìŞ™¬¦ä4Õ­[¾D.Ñ/Ku™3L^[Ìrb?sAuiùg"i6d«¹lÌ˜ÔÑgÖ»+©«â¿âŒO´ø¶ösöëšx²ÃÔ~.Ë‡tmpºf)qÕÍ°wîW¡îCiìç¾J‘hW^–ì§ƒÚï^i«ÆnAÂf!Ø¼ˆâ!’©+Qò­WÛ3/›âüd"^{ËÜPŞ3è"Hï¼9tTiÈæ¶ …àbÆ¸tsÛäĞí+ŞåB<ïÎÍC{Ì#7/T‰8øbëñ7’ÒyÆ’RÖC¨ñî*‡È;ĞPãÀ)’2BñAjrl}sF¤û¸µSŞ†µµÚ)Ö*%.àµÜÍ¼ã¼H¿_šw$æ©éÓH”KêéDøcÀ“`cX3ú£tíÄôGĞ€¦¡}C›øš}&şÍºÒAå«eàµµªUı‰ŸJŒ–äcOí™_Š’n ÈX³d6òŞD¤M5Eıé¸7l”\6lÒÊ-úfkOyÀ=£%ë°H4Fğ~?»LŒq@ÄäcÅd|<‡:ZPö”BT;qkïù¼ûT®ÇıÛaÃ„¾GN ÌµNfºôX:Š‹wXªåğ@&d§_
-http.statusCode=0
-http.version=
-http.headers.count=0
 flow.srcIp=205.234.218.129
 flow.dstIp=172.16.0.122
 flow.srcPort=80
@@ -7937,15 +7930,6 @@ tcp.flags=0x18
 tcp.window=4518
 tcp.checksum=0xc6af
 tcp.urgentPointer=0
-layer7=HTTP
-http.isRequest=true
-http.method=¦†ºN.––ºn¦FnÆ..Æ.–`Õ)Eù¶`&Ôm†ÆÆ†V¦Æ†¦fVf&FæD‰­!Äü’|[dç–
-SÔ
-http.uri=ËÍ/ËLH•ÄèêŸ·L!j±ûäx¹‚ıô<]@|P¥&–d–¥BŒ) Iƒ“’[fN*HqY 4úï™ï‘_Zœï›X”
-êmèû&Åƒ»
-http.statusCode=0
-http.version=
-http.headers.count=0
 flow.srcIp=68.71.208.11
 flow.dstIp=172.16.0.122
 flow.srcPort=80
@@ -18523,20 +18507,6 @@ tcp.flags=0x10
 tcp.window=3348
 tcp.checksum=0xa4b2
 tcp.urgentPointer=0
-layer7=HTTP
-http.isRequest=true
-http.method=
-		document.write('End
-http.uri=Function
-http.statusCode=0
-http.version=
-http.headers.count=3
-http.headers[0].name=		var isOpera = (navigator.userAgent.indexOf("Opera") != -1) ? true 
-http.headers[0].value=false;
-http.headers[1].name=		                  var swVer2 = navigator.plugins["Shockwave Flash 2.0"] ? " 2.0" 
-http.headers[1].value="";
-http.headers[2].name=		                        versionMinor = tempArrayMinor[1] > 0 ? tempArrayMinor[1] 
-http.headers[2].value=0;
 flow.srcIp=63.85.36.72
 flow.dstIp=172.16.0.122
 flow.srcPort=80
@@ -18611,13 +18581,6 @@ tcp.flags=0x18
 tcp.window=3348
 tcp.checksum=0x3edc
 tcp.urgentPointer=0
-layer7=HTTP
-http.isRequest=true
-http.method=	
-http.uri=
-http.statusCode=0
-http.version=
-http.headers.count=0
 flow.srcIp=63.85.36.72
 flow.dstIp=172.16.0.122
 flow.srcPort=80
@@ -18692,13 +18655,6 @@ tcp.flags=0x10
 tcp.window=3348
 tcp.checksum=0xe528
 tcp.urgentPointer=0
-layer7=HTTP
-http.isRequest=true
-http.method=
-http.uri==
-http.statusCode=0
-http.version=
-http.headers.count=0
 flow.srcIp=63.85.36.72
 flow.dstIp=172.16.0.122
 flow.srcPort=80
@@ -19304,13 +19260,6 @@ tcp.flags=0x10
 tcp.window=3348
 tcp.checksum=0x2a1e
 tcp.urgentPointer=0
-layer7=HTTP
-http.isRequest=true
-http.method=6B8-444553540000\"
-http.uri=codebase=\"http://active.macromedia.com/flash2/cabs/swflash.cab#version="+this.cabVersion+"\"
-http.statusCode=0
-http.version=
-http.headers.count=0
 flow.srcIp=63.85.36.72
 flow.dstIp=172.16.0.122
 flow.srcPort=80
@@ -19385,13 +19334,6 @@ tcp.flags=0x18
 tcp.window=3348
 tcp.checksum=0x5b1d
 tcp.urgentPointer=0
-layer7=HTTP
-http.isRequest=true
-http.method=eviceFont+"
-http.uri=FlashVars="+
-http.statusCode=0
-http.version=
-http.headers.count=0
 flow.srcIp=63.85.36.72
 flow.dstIp=172.16.0.122
 flow.srcPort=80
@@ -27139,15 +27081,6 @@ tcp.flags=0x18
 tcp.window=3393
 tcp.checksum=0xbd35
 tcp.urgentPointer=0
-layer7=HTTP
-http.isRequest=true
-http.method=7Q]f¦Lw³ê	K}Ä©@ô¡Ôè"ÉªÇíÕPZ¸lòGØiñÒù+ ş&/tRÙ"]5©{ÚA9ŸŞ|tjeJDBºŸs×Q}øèU'jt4Íª×C…¯æÑ*ŒşM }
-2´ßW“.í6<~m&zjô¼v—ôúWwÇìĞö©÷Ü¢©§Ç^OÕ\•5€İşoÊµ³gµ¸Ób…¡ÕP}•sìÔW…ÍŠçï\©…J4¼Óşcf¹£$e	²ZT
-–¾­¸z­ED~?N½4O¢Æÿ ©‰ÿ Íòª¡bÇúŸâ~_8f«y×Ş[=–›J] k½@‡*Jºzúm÷­—oÅX+}ÅÎ–İiG§ŸŸ«æc3N+u‡zˆËoK„²ãmºÂ­¥=hAéZúéìÏİN­èÏ?ÀÅôv®J¤í_2zßÉwËverÎS+—[“)aÆTÚBHÚ­§B¿–Æ±Ë…ú¼=ß>.Uù{jïu¬x|Ò‹[ÇÏ5ó¿q<±bøşAoÊ.nÜîŸœ·!İÊu¤4YÚÛ¨J‘DÖŠÔë_Êöëµ-İûåä÷mf­¯O‹†åúóı×—1®VÜ~­¶eªßŒGŒúmëpì™EÂ_/wcµ´¥iJ;i=W¼ÏœæLÊı­UGVÜ¿‡êÊÉÎ°|›ÅqœkÀãfÃ FuUÉ•±%o¸…nÚêŠ6l	Q$…TÖßVÛP€ÿ ×­•›møƒ¼·ç>sÉ—L±,wÂ8ÿ "k)·bÖÖLYw4I2–äµoI)ZÖåCa®,’¥A"`Ë³t¶ÛQ#{7ŸÜ§eòC'ò-V+¹ù}­‹-óy·•o\ÈCEN)Ô’cT¤’¥’(Ö}dûE}µIèI=ú‘ò›<©Šr-£Æ-–\É6Å‡áñ™İ²ƒ(uÊ6òWÛÚ IJ”Š$“ox]v…µ¦Ş ]ËÍ\Ï
-http.uri=á,+³VÃá¸C®¿s„µ=)Ã|æICéIútÏ+FĞ>vÛ*­2²Î„[¶í³²}BçQ¬úUñËÔ=Ãrçg™fÉ‡bxvêÌØ0mËS²Îó[cÛÛBC*@YüJ®[HøQâÉì[õ=ç«kï¸ÍšÀãò®²®²Û”€]—rjzÛOmôÛB?RIkÔ•uÑ¶0â"‘s
-http.statusCode=0
-http.version=
-http.headers.count=0
 flow.srcIp=63.85.36.72
 flow.dstIp=172.16.0.122
 flow.srcPort=80
@@ -27481,14 +27414,6 @@ tcp.flags=0x10
 tcp.window=3393
 tcp.checksum=0xf4d0
 tcp.urgentPointer=0
-layer7=HTTP
-http.isRequest=true
-http.method=»p¢‡ìÒûôº@(iM Šô?=5Fp’i‡œ‰]JÁJõûôDÎ
-http.uri=f8ëVõÃKÅD~ÚèØÓ™+b-Ë„u•¹qt!D“¹GÔSĞé›)ÔŒueG›óÔ2”ÇyÛm‘*$(Rzíª‚	øº_.uU ıxí¢±½s5îç%	ˆô{|HáG´û¨×İ]½à¤m¥:érİ´ök©ˆ³l2Nk•_3#tÛÅÆLçWÔ]p‘_ø@Õëz™<„Ş“¡Ş<ı”‚z'Üu±$S:Ä4IªìÈ[ R…:Ği·KÀwŸ§@*ş§zC´õõ¯íÒ–U²èiÓ“›N¶—5Ú)©ˆ¢Ñş)—¦‡¦á÷ÛYm¸úÕ#²¥!£TnMkÓ§ğóë/.&{>ÛËÇ]Pïú'şşºú¦{İŸ­¯Ë¾Ÿ‹³ø»~Ûı4¯´¦$Õÿ °ãÿ gúF»*¹ÅúšıÔ+é·pİ_İ¬î:×SÚ÷{ÛÛ³¯æÚãçÇ·PıÕø_2˜4Bª}“Ôü5èïX?/qí64wÚY‹!©.»	ÿ Tš!šÓ¡èø´„j°¸	Ilí:½:µZe-åÍ·8’ùu¤½	ÉÜ:ìqA·ï
-¦»Œµk9qµÕY~óÌ—ØP(_^Šÿ ?M^¨ö™¹¦nÓ{Ãü/›¤^yg”¢¦í‡cóÓlµXV¥eÜÒ$<ä´Šni¤:ÖÔWkŠQŞ6§jô¸|uoS<?Üıû&6±cpŞ­ü>§ÁóŸùß—ò­edzé†·9¤¾ö=noqQLiè¶¼Ğï!Mººn	o}¤(€t£q½ù4ªÈîõø¿Ú`¾rğ;/·ywuàm©vùÖtåXü{„Ä¶X¶8²ËŒ¸û¢ª-HJÛEw)H	*%[•¿Õßá÷´±nÉ× øqÎ×şvÈ¼t¶Â·+“1kcwk¼eNm1ÓÔBZT‡ÈÚ¥m×Añ?Séí01“¼âØ¯àÂ<Â
-http.statusCode=0
-http.version=
-http.headers.count=0
 flow.srcIp=63.85.36.72
 flow.dstIp=172.16.0.122
 flow.srcPort=80
@@ -32976,18 +32901,6 @@ tcp.flags=0x10
 tcp.window=7153
 tcp.checksum=0xdaa0
 tcp.urgentPointer=0
-layer7=HTTP
-http.isRequest=true
-http.method=–:bÛ¤(%ºpŒOQ&!>xô.‚äô%]z>4´ogÊE°½8òûN/yoOpW‚
-¿j•™?ôè¶aP‚Ì¢6F—®¤Á‹wÖl<è£¤6Ç…£8E	:Ãq†£^!dG^fĞê±ã3yîX"4BÄÑñã³úùc<.d´Â†Wãq0¨\Rå¡dø ¸w)ŞeäĞu|Ô5qpx—NKG?Ğ"y ¹z±Q¤¡ƒ¡†%‰#ÙÂ²ô{Ã(‡ )’îxaëL¬:†©J¬tÓb„qx8.îœüâAœ¡˜¹´¯Šº…´$O;,¦ÙDv¡ãÁGâQùÕ…—‡xWÉ¥Çó/
-¡?ºëAY6på‡ûTÛÉr®“±sLuzëu¶1W¿Ç_.+˜ErŞòV!õj„õØÊT.ÏõÙ<ÊU	l¢*Ûà½–B$ä¢måfŸÓè’xxP¯ÔGíËì5WÖØ}Ş -ßÛxá0$µ/’hˆ2ˆkT„P¨cºBc„¦tšÇBÏr;ÅU£Úª^ïêı·Û;ªş0òwÍƒË±0ü`æ4@£nÒh¹2~32ĞEçêIzDƒŠâs>¾Ã‘¤jƒ³©ğ³Zz–\ónåšÎÔs9^ŞĞl*W8èyD0å•›èpSùŸŞWïeˆŒñ
-†R½zihG^¿=³;.ò…{Í3ù..˜ Øg‘ğ1
-ñj--½wùî
-http.uri=u+/÷.š%)–ë5ıp–yÕ´Ï‰B—ÒŠšG`½¨ïòŸQèı<ÂÓ ^ì'ÎHˆï(²ŒîØ¼¡
->£àï|X%‹q
-http.statusCode=0
-http.version=
-http.headers.count=0
 flow.srcIp=205.234.218.129
 flow.dstIp=172.16.0.122
 flow.srcPort=80
@@ -34937,13 +34850,6 @@ tcp.flags=0x18
 tcp.window=92
 tcp.checksum=0x7cfc
 tcp.urgentPointer=0
-layer7=HTTP
-http.isRequest=true
-http.method=984CBC-E716-4C98-981E-3A02606037BA;
-http.uri=DE2=dXNhO2t5O2Jvd2xpbmcgZ3JlZW47YnJvYWRiYW5kOzU7NDs0OzczNjswMzcuMTAzOy0wODYuNDIwOzg0MDsxODsyMTU7Njt1czs=;
-http.statusCode=0
-http.version=
-http.headers.count=0
 flow.srcIp=172.16.0.122
 flow.dstIp=66.235.139.152
 flow.srcPort=35135
@@ -35111,28 +35017,6 @@ tcp.flags=0x18
 tcp.window=5964
 tcp.checksum=0x0178
 tcp.urgentPointer=0
-layer7=HTTP
-http.isRequest=true
-http.method=
-Cache-Control:
-http.uri=no-cache,
-http.statusCode=0
-http.version=
-http.headers.count=7
-http.headers[0].name=Pragma
-http.headers[0].value=no-cache
-http.headers[1].name=P3P
-http.headers[1].value=policyref="/w3c/p3p.xml", CP="NOI DSP COR NID PSA OUR IND COM NAV STA"
-http.headers[2].name=xserver
-http.headers[2].value=www296
-http.headers[3].name=Content-Length
-http.headers[3].value=0
-http.headers[4].name=Keep-Alive
-http.headers[4].value=timeout=15
-http.headers[5].name=Connection
-http.headers[5].value=Keep-Alive
-http.headers[6].name=Content-Type
-http.headers[6].value=text/plain
 flow.srcIp=66.235.139.152
 flow.dstIp=172.16.0.122
 flow.srcPort=80
@@ -37766,15 +37650,6 @@ tcp.flags=0x18
 tcp.window=4288
 tcp.checksum=0x91cc
 tcp.urgentPointer=0
-layer7=HTTP
-http.isRequest=true
-http.method=xãÒØT‚üÁÂ9xÅa à:0%-
-l- ‹y%>r†x""r¬D ª±®°»¹Á.! !ù	
-  ,       œ`'BñˆÚ¨\W\©" i/2M‹ÊtdaÂÈŠë @
-http.uri=À
-http.statusCode=0
-http.version=
-http.headers.count=0
 flow.srcIp=205.234.218.129
 flow.dstIp=172.16.0.122
 flow.srcPort=80

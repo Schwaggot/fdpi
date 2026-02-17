@@ -6134,13 +6134,6 @@ tcp.flags=0x10
 tcp.window=512
 tcp.checksum=0xaa46
 tcp.urgentPointer=0
-layer7=HTTP
-http.isRequest=true
-http.method= Á¯ş¯ÿ˜Qƒ+=Ä+ïÜÃŸ{şØEN?^çæÆ{ôÕ	îİÚ
-http.uri=îoÍÌ`ÃY´–ˆBcuFÇhc©5›Ìµ*„áágş§şI†±lÄşÎ‡½ÑD3è´zŠ8‰‘RŒm…¦Ï‘ÒÔUL¼'”Ë“,O§I3>–T)u¬
-http.statusCode=0
-http.version=
-http.headers.count=0
 flow.srcIp=125.65.112.7
 flow.dstIp=192.168.1.119
 flow.srcPort=80
@@ -10033,13 +10026,6 @@ tcp.flags=0x10
 tcp.window=511
 tcp.checksum=0x41b4
 tcp.urgentPointer=0
-layer7=HTTP
-http.isRequest=true
-http.method=Çº=RD”æ5ööQ!^9”“HÛX#]RÑ…&´7…+¶Bó§š‰ìTË[¡™R,k’(@HÜ¤K¡;Û´ù¢ÑY’R(¥=€{NÆ9Ó•zé‚B£[©'ƒÊAiYäV<Ğ÷µãA®‰]\Ù®©ƒ
-http.uri=4wEaÜàòDÂÁ·¾…ÚÄn˜ñcAU#w¸üÿ Æ¸ #{DrS¹‚!+U
-http.statusCode=0
-http.version=
-http.headers.count=0
 flow.srcIp=125.65.112.7
 flow.dstIp=192.168.1.119
 flow.srcPort=80

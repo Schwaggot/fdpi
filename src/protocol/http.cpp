@@ -60,22 +60,41 @@ std::expected<HTTP, Error> decodeHttp(std::span<const uint8_t> data, size_t& off
         msg.isRequest = true;
 
         auto spacePos = firstLine.find(' ');
-        if (spacePos == std::string_view::npos) {
+        if (spacePos == std::string_view::npos || spacePos == 0) {
             return std::unexpected(Error::MalformedPacket);
         }
-        msg.method = std::string(firstLine.substr(0, spacePos));
+        auto methodSv = firstLine.substr(0, spacePos);
+
+        // Method must be uppercase ASCII letters only (RFC 7230 token)
+        for (char c : methodSv) {
+            if (c < 'A' || c > 'Z') {
+                return std::unexpected(Error::MalformedPacket);
+            }
+        }
+        msg.method = std::string(methodSv);
 
         auto uriStart = spacePos + 1;
         auto uriEnd = firstLine.find(' ', uriStart);
         if (uriEnd == std::string_view::npos) {
             return std::unexpected(Error::MalformedPacket);
         }
-        msg.uri = std::string(firstLine.substr(uriStart, uriEnd - uriStart));
+        auto uriSv = firstLine.substr(uriStart, uriEnd - uriStart);
+
+        // URI must be visible ASCII (0x21-0x7E)
+        for (char c : uriSv) {
+            auto uc = static_cast<unsigned char>(c);
+            if (uc < 0x21 || uc > 0x7E) {
+                return std::unexpected(Error::MalformedPacket);
+            }
+        }
+        msg.uri = std::string(uriSv);
 
         auto verStart = uriEnd + 1;
-        if (firstLine.size() > verStart && firstLine.substr(verStart).starts_with("HTTP/")) {
-            msg.version = std::string(firstLine.substr(verStart + 5));
+        auto verSv = firstLine.substr(verStart);
+        if (!verSv.starts_with("HTTP/")) {
+            return std::unexpected(Error::MalformedPacket);
         }
+        msg.version = std::string(verSv.substr(5));
     }
 
     // Parse headers

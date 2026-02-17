@@ -6464,13 +6464,6 @@ tcp.flags=0x18
 tcp.window=312
 tcp.checksum=0x6c63
 tcp.urgentPointer=0
-layer7=HTTP
-http.isRequest=true
-http.method=µÛÒ|»ÇğËb¡A©“ìLk" ªÖƒ:3ç£µgÎœ"§ÿ´Üı6wAùê‚¸Rªäó…#˜5ËƒÌ íhG`æÌéJL<’‰@kOñ‘qˆl£•ç€H‹% j\g†ˆ[x€Ô	@f ÄÖ™áa+üxix¬€‡7¬Ãàñ5mxpÈu1ä®6î˜ÎAFS üê)A0
-http.uri=
-http.statusCode=0
-http.version=
-http.headers.count=0
 flow.srcIp=74.125.95.147
 flow.dstIp=172.16.0.107
 flow.srcPort=80
