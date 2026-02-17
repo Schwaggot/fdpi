@@ -1,6 +1,8 @@
 #include <fdpi/datalink.hpp>
 #include <fdpi/protocol/ethernet.hpp>
 
+#include <cstring>
+
 namespace fdpi {
 
 namespace {
