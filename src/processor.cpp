@@ -9,6 +9,7 @@ struct PacketProcessor::Impl {
     struct WorkItem {
         std::vector<uint8_t> data;
         uint64_t timestamp;
+        DataLinkType dlt{DataLinkType::DLT_EN10MB};
     };
 
     struct WorkerThread {
@@ -53,7 +54,8 @@ struct PacketProcessor::Impl {
                 worker.queue.pop();
             }
 
-            if (auto result = worker.decoder.decode(item.data, item.timestamp)) {
+            if (auto result =
+                    worker.decoder.decode(item.data, item.timestamp, item.dlt)) {
                 if (handler) {
                     handler->onPacket(*result);
                 }
@@ -90,12 +92,13 @@ void PacketProcessor::setHandler(std::shared_ptr<PacketHandler> handler) const {
 }
 
 void PacketProcessor::submit(std::span<const uint8_t> data,
-                             const uint64_t timestamp) const {
+                             const uint64_t timestamp,
+                             const DataLinkType dlt) const {
     if (!mImpl->started)
         return;
 
     std::vector dataCopy(data.begin(), data.end());
-    Impl::WorkItem item{std::move(dataCopy), timestamp};
+    Impl::WorkItem item{std::move(dataCopy), timestamp, dlt};
 
     size_t workerIdx = 0;
 
@@ -121,8 +124,9 @@ void PacketProcessor::submit(std::span<const uint8_t> data,
 }
 
 void PacketProcessor::submit(std::vector<uint8_t>&& data,
-                             const uint64_t timestamp) const {
-    submit(std::span<const uint8_t>(data), timestamp);
+                             const uint64_t timestamp,
+                             const DataLinkType dlt) const {
+    submit(std::span<const uint8_t>(data), timestamp, dlt);
 }
 
 void PacketProcessor::submitBatch(

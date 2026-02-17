@@ -34,9 +34,14 @@ public:
 
     void setHandler(std::shared_ptr<PacketHandler> handler) const;
 
-    void submit(std::span<const uint8_t> data, uint64_t timestamp = 0) const;
-    void submit(std::vector<uint8_t>&& data, uint64_t timestamp = 0) const;
-    void submitBatch(std::span<const std::pair<std::span<const uint8_t>, uint64_t>> packets) const;
+    void submit(std::span<const uint8_t> data,
+                uint64_t timestamp = 0,
+                DataLinkType dlt = DataLinkType::DLT_EN10MB) const;
+    void submit(std::vector<uint8_t>&& data,
+                uint64_t timestamp = 0,
+                DataLinkType dlt = DataLinkType::DLT_EN10MB) const;
+    void submitBatch(
+        std::span<const std::pair<std::span<const uint8_t>, uint64_t>> packets) const;
 
     void start() const;
     void stop() const;

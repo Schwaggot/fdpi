@@ -12,8 +12,11 @@ int main(int argc, char* argv[]) {
 
     fpcap::PacketReader reader(argv[1]);
     for (const auto& fpkt : reader) {
-        auto result = decoder.decode({fpkt.data, fpkt.captureLength}, fpkt.timestampSeconds);
-        if (!result) continue;
+        auto result =
+            decoder.decode({fpkt.data, fpkt.captureLength}, fpkt.timestampSeconds,
+                           static_cast<fdpi::DataLinkType>(fpkt.dataLinkType));
+        if (!result)
+            continue;
 
         const auto& pkt = result.value();
         if (auto* dns = std::get_if<fdpi::DNS>(&pkt.layer7)) {

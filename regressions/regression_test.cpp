@@ -35,8 +35,9 @@ std::string generateOutput(const fs::path& pcapPath) {
     fpcap::PacketReader reader(pcapPath.string());
     for (const auto& fpkt : reader) {
         ++index;
-        auto result =
-            decoder.decode({fpkt.data, fpkt.captureLength}, fpkt.timestampSeconds);
+        auto result = decoder.decode(
+            {fpkt.data, fpkt.captureLength}, fpkt.timestampSeconds,
+            static_cast<fdpi::DataLinkType>(fpkt.dataLinkType));
         if (result) {
             output += regression::formatPacket(index, result.value());
         } else {

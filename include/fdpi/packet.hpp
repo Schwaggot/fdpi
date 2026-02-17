@@ -6,6 +6,7 @@
 #include <variant>
 #include <vector>
 
+#include <fdpi/datalink.hpp>
 #include <fdpi/flow_id.hpp>
 #include <fdpi/protocol/arp.hpp>
 #include <fdpi/protocol/bgp.hpp>
@@ -71,6 +72,7 @@ struct Packet {
     std::vector<uint8_t> payload;
 
     // Metadata
+    DataLinkType dlt{DataLinkType::DLT_EN10MB};
     FlowId flowId;
     uint64_t timestamp{0};
     uint32_t captureLength{0};

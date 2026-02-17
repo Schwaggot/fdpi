@@ -1,3 +1,4 @@
+#include <fdpi/datalink.hpp>
 #include <fdpi/decoder.hpp>
 
 namespace fdpi {
@@ -68,35 +69,66 @@ PacketDecoder::PacketDecoder(Config config) : mImpl(std::make_unique<Impl>(confi
 PacketDecoder::~PacketDecoder() = default;
 
 std::expected<Packet, Error> PacketDecoder::decode(std::span<const uint8_t> data,
-                                                   uint64_t timestamp) const {
+                                                   uint64_t timestamp,
+                                                   DataLinkType dlt) const {
     if (data.empty()) {
         return std::unexpected(Error::BufferTooSmall);
     }
 
     Packet pkt{};
     pkt.timestamp = timestamp;
+    pkt.dlt = dlt;
     pkt.captureLength = static_cast<uint32_t>(data.size());
     pkt.wireLength = static_cast<uint32_t>(data.size());
 
     size_t offset = 0;
+    uint16_t etherType = 0;
 
-    // === L2: Ethernet ===
-    auto ethResult = decodeEthernet(data, offset);
-    if (!ethResult) {
-        return std::unexpected(ethResult.error());
-    }
-    pkt.ethernet = *ethResult;
-
-    uint16_t etherType = ethResult->etherType;
-
-    // Handle VLAN tags
-    while (etherType == kEtherTypeVLAN || etherType == kEtherTypeQinQ) {
-        auto vlanResult = decodeVlan(data, offset);
-        if (!vlanResult) {
-            return std::unexpected(vlanResult.error());
+    if (dlt == DataLinkType::DLT_EN10MB) {
+        // === L2: Ethernet fast path (exact original behavior) ===
+        auto ethResult = decodeEthernet(data, offset);
+        if (!ethResult) {
+            return std::unexpected(ethResult.error());
         }
-        pkt.vlan = *vlanResult;
-        etherType = vlanResult->etherType;
+        pkt.ethernet = *ethResult;
+        etherType = ethResult->etherType;
+
+        // Handle VLAN tags
+        while (etherType == kEtherTypeVLAN || etherType == kEtherTypeQinQ) {
+            auto vlanResult = decodeVlan(data, offset);
+            if (!vlanResult) {
+                return std::unexpected(vlanResult.error());
+            }
+            pkt.vlan = *vlanResult;
+            etherType = vlanResult->etherType;
+        }
+    } else {
+        // === L2: Generic DLT dispatch ===
+        auto linkResult = resolveDataLink(dlt, data, offset);
+        if (!linkResult) {
+            return std::unexpected(linkResult.error());
+        }
+        etherType = linkResult->etherType;
+
+        if (linkResult->hasMacs) {
+            Ethernet eth{};
+            eth.dst = linkResult->dstMac;
+            eth.src = linkResult->srcMac;
+            eth.etherType = linkResult->etherType;
+            pkt.ethernet = eth;
+        }
+
+        // Linux SLL captures may carry VLAN tags
+        if (dlt == DataLinkType::DLT_LINUX_SLL || dlt == DataLinkType::DLT_LINUX_SLL2) {
+            while (etherType == kEtherTypeVLAN || etherType == kEtherTypeQinQ) {
+                auto vlanResult = decodeVlan(data, offset);
+                if (!vlanResult) {
+                    return std::unexpected(vlanResult.error());
+                }
+                pkt.vlan = *vlanResult;
+                etherType = vlanResult->etherType;
+            }
+        }
     }
 
     // Handle MPLS

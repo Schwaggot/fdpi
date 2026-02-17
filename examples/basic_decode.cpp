@@ -12,7 +12,9 @@ int main(int argc, char* argv[]) {
 
     fpcap::PacketReader reader(argv[1]);
     for (const auto& fpkt : reader) {
-        auto result = decoder.decode({fpkt.data, fpkt.captureLength}, fpkt.timestampSeconds);
+        auto result =
+            decoder.decode({fpkt.data, fpkt.captureLength}, fpkt.timestampSeconds,
+                           static_cast<fdpi::DataLinkType>(fpkt.dataLinkType));
         if (!result) {
             std::cerr << "Decode error: " << fdpi::toString(result.error()) << "\n";
             continue;
@@ -20,8 +22,8 @@ int main(int argc, char* argv[]) {
 
         const auto& pkt = result.value();
         if (auto* ipv4 = std::get_if<fdpi::IPv4>(&pkt.layer3)) {
-            std::cout << "IPv4 " << ipv4->srcIp.toString()
-                      << " -> " << ipv4->dstIp.toString() << "\n";
+            std::cout << "IPv4 " << ipv4->srcIp.toString() << " -> "
+                      << ipv4->dstIp.toString() << "\n";
         }
     }
 

@@ -12,13 +12,14 @@ int main(int argc, char* argv[]) {
 
     fpcap::PacketReader reader(argv[1]);
     for (const auto& fpkt : reader) {
-        decoder.decode({fpkt.data, fpkt.captureLength}, fpkt.timestampSeconds);
+        decoder.decode({fpkt.data, fpkt.captureLength}, fpkt.timestampSeconds,
+                       static_cast<fdpi::DataLinkType>(fpkt.dataLinkType));
     }
 
     std::cout << "Total flows: " << decoder.flows().size() << "\n";
     decoder.flows().forEach([](const fdpi::FlowMetadata& flow) {
-        std::cout << "  Flow: " << flow.packetCount << " packets, "
-                  << flow.byteCount << " bytes\n";
+        std::cout << "  Flow: " << flow.packetCount << " packets, " << flow.byteCount
+                  << " bytes\n";
     });
 
     return 0;

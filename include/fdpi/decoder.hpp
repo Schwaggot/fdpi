@@ -90,8 +90,10 @@ public:
     explicit PacketDecoder(Config config = {});
     ~PacketDecoder();
 
-    std::expected<Packet, Error> decode(std::span<const uint8_t> data,
-                                        uint64_t timestamp = 0) const;
+    std::expected<Packet, Error>
+    decode(std::span<const uint8_t> data,
+           uint64_t timestamp = 0,
+           DataLinkType dlt = DataLinkType::DLT_EN10MB) const;
 
     const FlowTable& flows() const;
     FlowTable& flows();

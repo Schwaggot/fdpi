@@ -4,6 +4,7 @@
 // Umbrella header for fdpi
 
 #include <fdpi/address.hpp>
+#include <fdpi/datalink.hpp>
 #include <fdpi/error.hpp>
 #include <fdpi/protocol/ethernet.hpp>
 #include <fdpi/protocol/ipv4.hpp>

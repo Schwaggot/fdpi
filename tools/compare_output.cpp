@@ -553,23 +553,13 @@ int main(int argc, char* argv[]) {
     printHeader();
 
     uint32_t frameNum = 0;
-    bool checkedLinkType = false;
     fpcap::PacketReader reader(pcapPath);
     for (const auto& fpkt : reader) {
         ++frameNum;
 
-        // Check link layer type on first packet; skip non-Ethernet
-        if (!checkedLinkType) {
-            checkedLinkType = true;
-            if (fpkt.dataLinkType != 1) { // 1 = LINKTYPE_ETHERNET
-                std::cerr << "Unsupported link layer type: " << fpkt.dataLinkType
-                          << " (only Ethernet/1 supported)\n";
-                return 2;
-            }
-        }
-
         auto result =
-            decoder.decode({fpkt.data, fpkt.captureLength}, fpkt.timestampSeconds);
+            decoder.decode({fpkt.data, fpkt.captureLength}, fpkt.timestampSeconds,
+                           static_cast<fdpi::DataLinkType>(fpkt.dataLinkType));
         if (!result) {
             // Output a row with just frame info and an error marker
             Row row(COLUMNS.size());
