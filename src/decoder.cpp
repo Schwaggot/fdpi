@@ -239,6 +239,12 @@ std::expected<Packet, Error> PacketDecoder::decode(std::span<const uint8_t> data
 
             switch (detected) {
             case AppProtocol::DNS: {
+                // DNS over TCP has a 2-byte length prefix (RFC 1035 §4.2.2)
+                if (std::holds_alternative<TCP>(pkt.layer4)) {
+                    if (payloadSpan.size() < 2)
+                        break;
+                    l7Offset = 2;
+                }
                 if (auto result = decodeDns(payloadSpan, l7Offset)) {
                     pkt.layer7 = std::move(*result);
                 }
