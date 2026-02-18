@@ -112,6 +112,7 @@ struct Packet {
     Timestamp timestamp{};
     uint32_t captureLength{0};
     uint32_t wireLength{0};
+    bool retransmission{false};
 };
 
 } // namespace fdpi

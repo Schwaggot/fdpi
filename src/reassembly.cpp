@@ -4,6 +4,14 @@
 
 namespace fdpi {
 
+namespace {
+
+inline bool seqBeforeOrEqual(const uint32_t a, const uint32_t b) {
+    return static_cast<int32_t>(a - b) <= 0;
+}
+
+} // anonymous namespace
+
 struct TcpReassembler::Impl {
     struct StreamBuffer {
         std::map<uint32_t, std::vector<uint8_t>> segments; // seq -> data
@@ -23,18 +31,21 @@ TcpReassembler::TcpReassembler(const Config& config) : mImpl(std::make_unique<Im
 
 TcpReassembler::~TcpReassembler() = default;
 
-std::optional<std::vector<uint8_t>> TcpReassembler::process(
-    const FlowId& flowId, const TCP& header, std::span<const uint8_t> payload) const {
-    if (payload.empty()) {
-        return std::nullopt;
-    }
-
+ReassemblyResult TcpReassembler::process(const FlowId& flowId,
+                                         const TCP& header,
+                                         std::span<const uint8_t> payload) const {
     auto& stream = mImpl->streams[flowId];
 
+    // Handle SYN
     if (header.syn()) {
+        bool retransmission = stream.synSeen;
         stream.synSeen = true;
         stream.nextExpectedSeq = header.seqNum + 1;
-        return std::nullopt;
+        return ReassemblyResult{{}, retransmission};
+    }
+
+    if (payload.empty()) {
+        return ReassemblyResult{};
     }
 
     if (!stream.synSeen) {
@@ -44,7 +55,26 @@ std::optional<std::vector<uint8_t>> TcpReassembler::process(
 
     // Check stream size limit
     if (stream.totalBytes + payload.size() > mImpl->config.maxStreamBytes) {
-        return std::nullopt;
+        return ReassemblyResult{};
+    }
+
+    // Retransmission detection
+    bool retransmission = false;
+    uint32_t seqEnd = header.seqNum + static_cast<uint32_t>(payload.size());
+
+    // Case 1: Entire segment already delivered
+    if (seqBeforeOrEqual(seqEnd, stream.nextExpectedSeq)) {
+        retransmission = true;
+    }
+    // Case 2: Duplicate of buffered out-of-order segment
+    else if (auto it = stream.segments.find(header.seqNum);
+             it != stream.segments.end() && it->second.size() == payload.size()) {
+        retransmission = true;
+    }
+
+    // Skip insertion for retransmissions
+    if (retransmission) {
+        return ReassemblyResult{{}, true};
     }
 
     // Store the segment
@@ -65,11 +95,8 @@ std::optional<std::vector<uint8_t>> TcpReassembler::process(
         stream.segments.erase(it);
     }
 
-    if (result.empty()) {
-        return std::nullopt;
-    }
-
-    return result;
+    return ReassemblyResult{
+        result.empty() ? std::nullopt : std::optional(std::move(result)), false};
 }
 
 size_t TcpReassembler::cleanupExpired(Timestamp /*now*/) {

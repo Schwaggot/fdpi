@@ -798,20 +798,22 @@ std::expected<Packet, Error> PacketDecoder::decode(std::span<const uint8_t> data
         if (tcpHdr && mImpl->config.enableTcpReassembly) {
             // --- TCP stream-first path ---
             // 1. Feed segment to reassembler
-            auto reassembled =
+            auto reassemblyResult =
                 mImpl->reassembler.process(pkt.flowId, *tcpHdr, pkt.payload);
+            pkt.retransmission = reassemblyResult.retransmission;
 
-            if (reassembled && !reassembled->empty()) {
+            if (reassemblyResult.data && !reassemblyResult.data->empty()) {
                 auto& stream = mImpl->l7Streams[pkt.flowId];
 
                 // Buffer size check
-                if (stream.buffer.size() + reassembled->size() >
+                if (stream.buffer.size() + reassemblyResult.data->size() >
                     mImpl->config.maxL7StreamBytes) {
                     mImpl->l7Streams.erase(pkt.flowId);
                 } else {
                     // Append reassembled data to stream buffer
-                    stream.buffer.insert(stream.buffer.end(), reassembled->begin(),
-                                         reassembled->end());
+                    stream.buffer.insert(stream.buffer.end(),
+                                         reassemblyResult.data->begin(),
+                                         reassemblyResult.data->end());
 
                     // Detect protocol if not yet decided
                     if (!stream.detectionDone) {

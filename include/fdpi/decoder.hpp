@@ -41,6 +41,11 @@ struct TcpReassemblerConfig {
     size_t maxStreamBytes{10 * 1024 * 1024};
 };
 
+struct ReassemblyResult {
+    std::optional<std::vector<uint8_t>> data;
+    bool retransmission{false};
+};
+
 class TcpReassembler {
 public:
     using Config = TcpReassemblerConfig;
@@ -48,9 +53,9 @@ public:
     explicit TcpReassembler(const Config& config = {});
     ~TcpReassembler();
 
-    std::optional<std::vector<uint8_t>> process(const FlowId& flowId,
-                                                const TCP& header,
-                                                std::span<const uint8_t> payload) const;
+    ReassemblyResult process(const FlowId& flowId,
+                             const TCP& header,
+                             std::span<const uint8_t> payload) const;
     static size_t cleanupExpired(Timestamp now);
 
 private:
