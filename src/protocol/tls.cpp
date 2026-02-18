@@ -28,6 +28,12 @@ std::expected<TLS, Error> decodeTls(std::span<const uint8_t> data, size_t& offse
 
     TLS rec{};
     rec.contentType = ptr[0];
+
+    // Valid TLS content types: 20 (CCS), 21 (Alert), 22 (Handshake), 23 (AppData)
+    if (rec.contentType < 20 || rec.contentType > 23) {
+        return std::unexpected(Error::MalformedPacket);
+    }
+
     rec.version = readU16(ptr + 1);
     uint16_t recordLen = readU16(ptr + 3);
 

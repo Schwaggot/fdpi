@@ -558,17 +558,15 @@ std::expected<Packet, Error> PacketDecoder::decode(std::span<const uint8_t> data
             l4Protocol = fptr[0]; // real next header
             uint16_t fragOffsetField = static_cast<uint16_t>((fptr[2] << 8) | fptr[3]);
             uint16_t fragOffset = fragOffsetField >> 3; // top 13 bits
-            bool moreFragments = (fragOffsetField & 0x01) != 0;
             offset += kFragHdrSize;
 
-            // Skip L4 for actual fragments (not atomic fragments)
-            if (fragOffset > 0 || moreFragments) {
+            if (fragOffset > 0) {
                 pkt.payload.assign(data.begin() + static_cast<ptrdiff_t>(offset),
                                    data.end());
                 pkt.flowId = buildFlowId(pkt);
                 return pkt;
             }
-            // Atomic fragment (offset=0, MF=0): continue to L4
+            // First fragment or unfragmented: continue to L4
         }
     } else if (etherType == kEtherTypeARP) {
         auto arpResult = decodeArp(data, offset);
