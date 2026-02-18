@@ -785,11 +785,12 @@ TEST(PacketDecoder, VxlanInnerDecode) {
 
 // Build Ethernet + IPv4 + TCP + payload
 static std::vector<uint8_t> buildTcpPacketWithPayload(uint32_t srcIp,
-                                                       uint32_t dstIp,
-                                                       uint16_t srcPort,
-                                                       uint16_t dstPort,
-                                                       const std::string& payload,
-                                                       uint8_t tcpFlags = 0x18 // PSH|ACK
+                                                      uint32_t dstIp,
+                                                      uint16_t srcPort,
+                                                      uint16_t dstPort,
+                                                      const std::string& payload,
+                                                      uint32_t seqNum = 1000,
+                                                      uint8_t tcpFlags = 0x18 // PSH|ACK
 ) {
     std::vector<uint8_t> packet;
 
@@ -802,8 +803,7 @@ static std::vector<uint8_t> buildTcpPacketWithPayload(uint32_t srcIp,
     // IPv4 header (20 bytes)
     packet.push_back(0x45);
     packet.push_back(0x00);
-    uint16_t totalLen =
-        static_cast<uint16_t>(20 + 20 + payload.size());
+    uint16_t totalLen = static_cast<uint16_t>(20 + 20 + payload.size());
     packet.push_back(static_cast<uint8_t>(totalLen >> 8));
     packet.push_back(static_cast<uint8_t>(totalLen & 0xFF));
     packet.push_back(0x00);
@@ -828,10 +828,10 @@ static std::vector<uint8_t> buildTcpPacketWithPayload(uint32_t srcIp,
     packet.push_back(static_cast<uint8_t>(srcPort & 0xFF));
     packet.push_back(static_cast<uint8_t>(dstPort >> 8));
     packet.push_back(static_cast<uint8_t>(dstPort & 0xFF));
-    packet.push_back(0x00);
-    packet.push_back(0x00);
-    packet.push_back(0x03);
-    packet.push_back(0xE8);
+    packet.push_back(static_cast<uint8_t>((seqNum >> 24) & 0xFF));
+    packet.push_back(static_cast<uint8_t>((seqNum >> 16) & 0xFF));
+    packet.push_back(static_cast<uint8_t>((seqNum >> 8) & 0xFF));
+    packet.push_back(static_cast<uint8_t>(seqNum & 0xFF));
     packet.push_back(0x00);
     packet.push_back(0x00);
     packet.push_back(0x00);
@@ -862,27 +862,35 @@ constexpr uint16_t kPop3ClientPort = 50000;
 TEST(PacketDecoder, Pop3RetrMultilineSkipsDataPackets) {
     fdpi::PacketDecoder decoder;
 
+    // Track sequence numbers per direction
+    uint32_t serverSeq = 1000;
+    uint32_t clientSeq = 1000;
+
     // Server greeting (establishes server→client detection)
-    auto greeting = buildTcpPacketWithPayload(
-        kPop3Server, kPop3Client, kPop3ServerPort, kPop3ClientPort,
-        "+OK POP3 server ready\r\n");
+    std::string greetStr = "+OK POP3 server ready\r\n";
+    auto greeting = buildTcpPacketWithPayload(kPop3Server, kPop3Client, kPop3ServerPort,
+                                              kPop3ClientPort, greetStr, serverSeq);
+    serverSeq += static_cast<uint32_t>(greetStr.size());
     auto r1 = decoder.decode(greeting);
     ASSERT_TRUE(r1.has_value());
     ASSERT_TRUE(std::holds_alternative<fdpi::POP3>(r1->layer7));
 
     // USER command (establishes client→server detection)
-    auto user = buildTcpPacketWithPayload(
-        kPop3Client, kPop3Server, kPop3ClientPort, kPop3ServerPort,
-        "USER test\r\n");
+    std::string userStr = "USER test\r\n";
+    auto user = buildTcpPacketWithPayload(kPop3Client, kPop3Server, kPop3ClientPort,
+                                          kPop3ServerPort, userStr, clientSeq);
+    clientSeq += static_cast<uint32_t>(userStr.size());
     decoder.decode(user);
-    decoder.decode(buildTcpPacketWithPayload(
-        kPop3Server, kPop3Client, kPop3ServerPort, kPop3ClientPort,
-        "+OK\r\n"));
+    std::string okUserStr = "+OK\r\n";
+    decoder.decode(buildTcpPacketWithPayload(kPop3Server, kPop3Client, kPop3ServerPort,
+                                             kPop3ClientPort, okUserStr, serverSeq));
+    serverSeq += static_cast<uint32_t>(okUserStr.size());
 
     // Client: RETR 1
-    auto retr = buildTcpPacketWithPayload(
-        kPop3Client, kPop3Server, kPop3ClientPort, kPop3ServerPort,
-        "RETR 1\r\n");
+    std::string retrStr = "RETR 1\r\n";
+    auto retr = buildTcpPacketWithPayload(kPop3Client, kPop3Server, kPop3ClientPort,
+                                          kPop3ServerPort, retrStr, clientSeq);
+    clientSeq += static_cast<uint32_t>(retrStr.size());
     auto r2 = decoder.decode(retr);
     ASSERT_TRUE(r2.has_value());
     auto* cmd = std::get_if<fdpi::POP3>(&r2->layer7);
@@ -890,33 +898,37 @@ TEST(PacketDecoder, Pop3RetrMultilineSkipsDataPackets) {
     EXPECT_EQ(cmd->command, "RETR");
 
     // Server: +OK (enters data mode)
-    auto ok = buildTcpPacketWithPayload(
-        kPop3Server, kPop3Client, kPop3ServerPort, kPop3ClientPort,
-        "+OK 1234 octets\r\n");
+    std::string okRetrStr = "+OK 1234 octets\r\n";
+    auto ok = buildTcpPacketWithPayload(kPop3Server, kPop3Client, kPop3ServerPort,
+                                        kPop3ClientPort, okRetrStr, serverSeq);
+    serverSeq += static_cast<uint32_t>(okRetrStr.size());
     auto r3 = decoder.decode(ok);
     ASSERT_TRUE(r3.has_value());
     ASSERT_TRUE(std::holds_alternative<fdpi::POP3>(r3->layer7));
 
     // Data packet — should be suppressed (monostate)
-    auto data = buildTcpPacketWithPayload(
-        kPop3Server, kPop3Client, kPop3ServerPort, kPop3ClientPort,
-        "From: user@example.com\r\nSubject: Test\r\n");
+    std::string dataStr = "From: user@example.com\r\nSubject: Test\r\n";
+    auto data = buildTcpPacketWithPayload(kPop3Server, kPop3Client, kPop3ServerPort,
+                                          kPop3ClientPort, dataStr, serverSeq);
+    serverSeq += static_cast<uint32_t>(dataStr.size());
     auto r4 = decoder.decode(data);
     ASSERT_TRUE(r4.has_value());
     EXPECT_TRUE(std::holds_alternative<std::monostate>(r4->layer7));
 
     // Terminator
-    auto term = buildTcpPacketWithPayload(
-        kPop3Server, kPop3Client, kPop3ServerPort, kPop3ClientPort,
-        ".\r\n");
+    std::string termStr = ".\r\n";
+    auto term = buildTcpPacketWithPayload(kPop3Server, kPop3Client, kPop3ServerPort,
+                                          kPop3ClientPort, termStr, serverSeq);
+    serverSeq += static_cast<uint32_t>(termStr.size());
     auto r5 = decoder.decode(term);
     ASSERT_TRUE(r5.has_value());
     EXPECT_TRUE(std::holds_alternative<std::monostate>(r5->layer7));
 
     // After terminator, QUIT should decode normally
-    auto quit = buildTcpPacketWithPayload(
-        kPop3Client, kPop3Server, kPop3ClientPort, kPop3ServerPort,
-        "QUIT\r\n");
+    std::string quitStr = "QUIT\r\n";
+    auto quit = buildTcpPacketWithPayload(kPop3Client, kPop3Server, kPop3ClientPort,
+                                          kPop3ServerPort, quitStr, clientSeq);
+    clientSeq += static_cast<uint32_t>(quitStr.size());
     auto r6 = decoder.decode(quit);
     ASSERT_TRUE(r6.has_value());
     auto* quitCmd = std::get_if<fdpi::POP3>(&r6->layer7);
@@ -927,27 +939,35 @@ TEST(PacketDecoder, Pop3RetrMultilineSkipsDataPackets) {
 TEST(PacketDecoder, Pop3RetrErrDoesNotEnterDataMode) {
     fdpi::PacketDecoder decoder;
 
+    uint32_t serverSeq = 1000;
+    uint32_t clientSeq = 1000;
+
     // Server greeting
-    decoder.decode(buildTcpPacketWithPayload(
-        kPop3Server, kPop3Client, kPop3ServerPort, kPop3ClientPort,
-        "+OK POP3 server ready\r\n"));
+    std::string s1 = "+OK POP3 server ready\r\n";
+    decoder.decode(buildTcpPacketWithPayload(kPop3Server, kPop3Client, kPop3ServerPort,
+                                             kPop3ClientPort, s1, serverSeq));
+    serverSeq += static_cast<uint32_t>(s1.size());
     // USER command (establishes client→server detection)
-    decoder.decode(buildTcpPacketWithPayload(
-        kPop3Client, kPop3Server, kPop3ClientPort, kPop3ServerPort,
-        "USER test\r\n"));
-    decoder.decode(buildTcpPacketWithPayload(
-        kPop3Server, kPop3Client, kPop3ServerPort, kPop3ClientPort,
-        "+OK\r\n"));
+    std::string s2 = "USER test\r\n";
+    decoder.decode(buildTcpPacketWithPayload(kPop3Client, kPop3Server, kPop3ClientPort,
+                                             kPop3ServerPort, s2, clientSeq));
+    clientSeq += static_cast<uint32_t>(s2.size());
+    std::string s3 = "+OK\r\n";
+    decoder.decode(buildTcpPacketWithPayload(kPop3Server, kPop3Client, kPop3ServerPort,
+                                             kPop3ClientPort, s3, serverSeq));
+    serverSeq += static_cast<uint32_t>(s3.size());
 
     // Client: RETR 999
-    decoder.decode(buildTcpPacketWithPayload(
-        kPop3Client, kPop3Server, kPop3ClientPort, kPop3ServerPort,
-        "RETR 999\r\n"));
+    std::string s4 = "RETR 999\r\n";
+    decoder.decode(buildTcpPacketWithPayload(kPop3Client, kPop3Server, kPop3ClientPort,
+                                             kPop3ServerPort, s4, clientSeq));
+    clientSeq += static_cast<uint32_t>(s4.size());
 
     // Server: -ERR (should NOT enter data mode)
-    auto err = buildTcpPacketWithPayload(
-        kPop3Server, kPop3Client, kPop3ServerPort, kPop3ClientPort,
-        "-ERR no such message\r\n");
+    std::string s5 = "-ERR no such message\r\n";
+    auto err = buildTcpPacketWithPayload(kPop3Server, kPop3Client, kPop3ServerPort,
+                                         kPop3ClientPort, s5, serverSeq);
+    serverSeq += static_cast<uint32_t>(s5.size());
     auto r = decoder.decode(err);
     ASSERT_TRUE(r.has_value());
     auto* resp = std::get_if<fdpi::POP3>(&r->layer7);
@@ -955,9 +975,10 @@ TEST(PacketDecoder, Pop3RetrErrDoesNotEnterDataMode) {
     EXPECT_FALSE(resp->success);
 
     // Next server packet should still decode as POP3
-    auto next = buildTcpPacketWithPayload(
-        kPop3Server, kPop3Client, kPop3ServerPort, kPop3ClientPort,
-        "+OK 0 messages\r\n");
+    std::string s6 = "+OK 0 messages\r\n";
+    auto next = buildTcpPacketWithPayload(kPop3Server, kPop3Client, kPop3ServerPort,
+                                          kPop3ClientPort, s6, serverSeq);
+    serverSeq += static_cast<uint32_t>(s6.size());
     auto r2 = decoder.decode(next);
     ASSERT_TRUE(r2.has_value());
     EXPECT_TRUE(std::holds_alternative<fdpi::POP3>(r2->layer7));
@@ -966,21 +987,28 @@ TEST(PacketDecoder, Pop3RetrErrDoesNotEnterDataMode) {
 TEST(PacketDecoder, Pop3ListNoArgMultiline) {
     fdpi::PacketDecoder decoder;
 
+    uint32_t serverSeq = 1000;
+    uint32_t clientSeq = 1000;
+
     // Server greeting + USER to establish both flow directions
-    decoder.decode(buildTcpPacketWithPayload(
-        kPop3Server, kPop3Client, kPop3ServerPort, kPop3ClientPort,
-        "+OK POP3 server ready\r\n"));
-    decoder.decode(buildTcpPacketWithPayload(
-        kPop3Client, kPop3Server, kPop3ClientPort, kPop3ServerPort,
-        "USER test\r\n"));
-    decoder.decode(buildTcpPacketWithPayload(
-        kPop3Server, kPop3Client, kPop3ServerPort, kPop3ClientPort,
-        "+OK\r\n"));
+    std::string s1 = "+OK POP3 server ready\r\n";
+    decoder.decode(buildTcpPacketWithPayload(kPop3Server, kPop3Client, kPop3ServerPort,
+                                             kPop3ClientPort, s1, serverSeq));
+    serverSeq += static_cast<uint32_t>(s1.size());
+    std::string s2 = "USER test\r\n";
+    decoder.decode(buildTcpPacketWithPayload(kPop3Client, kPop3Server, kPop3ClientPort,
+                                             kPop3ServerPort, s2, clientSeq));
+    clientSeq += static_cast<uint32_t>(s2.size());
+    std::string s3 = "+OK\r\n";
+    decoder.decode(buildTcpPacketWithPayload(kPop3Server, kPop3Client, kPop3ServerPort,
+                                             kPop3ClientPort, s3, serverSeq));
+    serverSeq += static_cast<uint32_t>(s3.size());
 
     // Client: LIST (no argument — multi-line)
-    auto list = buildTcpPacketWithPayload(
-        kPop3Client, kPop3Server, kPop3ClientPort, kPop3ServerPort,
-        "LIST\r\n");
+    std::string s4 = "LIST\r\n";
+    auto list = buildTcpPacketWithPayload(kPop3Client, kPop3Server, kPop3ClientPort,
+                                          kPop3ServerPort, s4, clientSeq);
+    clientSeq += static_cast<uint32_t>(s4.size());
     auto r = decoder.decode(list);
     ASSERT_TRUE(r.has_value());
     auto* cmd = std::get_if<fdpi::POP3>(&r->layer7);
@@ -988,15 +1016,17 @@ TEST(PacketDecoder, Pop3ListNoArgMultiline) {
     EXPECT_EQ(cmd->command, "LIST");
 
     // Server: +OK
-    auto ok = buildTcpPacketWithPayload(
-        kPop3Server, kPop3Client, kPop3ServerPort, kPop3ClientPort,
-        "+OK\r\n");
+    std::string s5 = "+OK\r\n";
+    auto ok = buildTcpPacketWithPayload(kPop3Server, kPop3Client, kPop3ServerPort,
+                                        kPop3ClientPort, s5, serverSeq);
+    serverSeq += static_cast<uint32_t>(s5.size());
     decoder.decode(ok);
 
     // Data line — suppressed
-    auto data = buildTcpPacketWithPayload(
-        kPop3Server, kPop3Client, kPop3ServerPort, kPop3ClientPort,
-        "1 1234\r\n2 5678\r\n.\r\n");
+    std::string s6 = "1 1234\r\n2 5678\r\n.\r\n";
+    auto data = buildTcpPacketWithPayload(kPop3Server, kPop3Client, kPop3ServerPort,
+                                          kPop3ClientPort, s6, serverSeq);
+    serverSeq += static_cast<uint32_t>(s6.size());
     auto r2 = decoder.decode(data);
     ASSERT_TRUE(r2.has_value());
     EXPECT_TRUE(std::holds_alternative<std::monostate>(r2->layer7));
@@ -1005,21 +1035,28 @@ TEST(PacketDecoder, Pop3ListNoArgMultiline) {
 TEST(PacketDecoder, Pop3ListWithArgSingleLine) {
     fdpi::PacketDecoder decoder;
 
+    uint32_t serverSeq = 1000;
+    uint32_t clientSeq = 1000;
+
     // Server greeting + USER to establish both flow directions
-    decoder.decode(buildTcpPacketWithPayload(
-        kPop3Server, kPop3Client, kPop3ServerPort, kPop3ClientPort,
-        "+OK POP3 server ready\r\n"));
-    decoder.decode(buildTcpPacketWithPayload(
-        kPop3Client, kPop3Server, kPop3ClientPort, kPop3ServerPort,
-        "USER test\r\n"));
-    decoder.decode(buildTcpPacketWithPayload(
-        kPop3Server, kPop3Client, kPop3ServerPort, kPop3ClientPort,
-        "+OK\r\n"));
+    std::string s1 = "+OK POP3 server ready\r\n";
+    decoder.decode(buildTcpPacketWithPayload(kPop3Server, kPop3Client, kPop3ServerPort,
+                                             kPop3ClientPort, s1, serverSeq));
+    serverSeq += static_cast<uint32_t>(s1.size());
+    std::string s2 = "USER test\r\n";
+    decoder.decode(buildTcpPacketWithPayload(kPop3Client, kPop3Server, kPop3ClientPort,
+                                             kPop3ServerPort, s2, clientSeq));
+    clientSeq += static_cast<uint32_t>(s2.size());
+    std::string s3 = "+OK\r\n";
+    decoder.decode(buildTcpPacketWithPayload(kPop3Server, kPop3Client, kPop3ServerPort,
+                                             kPop3ClientPort, s3, serverSeq));
+    serverSeq += static_cast<uint32_t>(s3.size());
 
     // Client: LIST 1 (with argument — single-line response)
-    auto list = buildTcpPacketWithPayload(
-        kPop3Client, kPop3Server, kPop3ClientPort, kPop3ServerPort,
-        "LIST 1\r\n");
+    std::string s4 = "LIST 1\r\n";
+    auto list = buildTcpPacketWithPayload(kPop3Client, kPop3Server, kPop3ClientPort,
+                                          kPop3ServerPort, s4, clientSeq);
+    clientSeq += static_cast<uint32_t>(s4.size());
     auto r = decoder.decode(list);
     ASSERT_TRUE(r.has_value());
     auto* cmd = std::get_if<fdpi::POP3>(&r->layer7);
@@ -1027,9 +1064,10 @@ TEST(PacketDecoder, Pop3ListWithArgSingleLine) {
     EXPECT_EQ(cmd->command, "LIST");
 
     // Server: +OK 1 1234 (should NOT enter data mode)
-    auto ok = buildTcpPacketWithPayload(
-        kPop3Server, kPop3Client, kPop3ServerPort, kPop3ClientPort,
-        "+OK 1 1234\r\n");
+    std::string s5 = "+OK 1 1234\r\n";
+    auto ok = buildTcpPacketWithPayload(kPop3Server, kPop3Client, kPop3ServerPort,
+                                        kPop3ClientPort, s5, serverSeq);
+    serverSeq += static_cast<uint32_t>(s5.size());
     auto r2 = decoder.decode(ok);
     ASSERT_TRUE(r2.has_value());
     auto* resp = std::get_if<fdpi::POP3>(&r2->layer7);
@@ -1037,10 +1075,177 @@ TEST(PacketDecoder, Pop3ListWithArgSingleLine) {
     EXPECT_TRUE(resp->success);
 
     // Next server packet should still decode as POP3 (not suppressed)
-    auto next = buildTcpPacketWithPayload(
-        kPop3Server, kPop3Client, kPop3ServerPort, kPop3ClientPort,
-        "+OK bye\r\n");
+    std::string s6 = "+OK bye\r\n";
+    auto next = buildTcpPacketWithPayload(kPop3Server, kPop3Client, kPop3ServerPort,
+                                          kPop3ClientPort, s6, serverSeq);
+    serverSeq += static_cast<uint32_t>(s6.size());
     auto r3 = decoder.decode(next);
     ASSERT_TRUE(r3.has_value());
     EXPECT_TRUE(std::holds_alternative<fdpi::POP3>(r3->layer7));
+}
+
+// === Stream Reassembly Tests ===
+
+TEST(PacketDecoder, StreamReassembly_HttpSplitAcrossSegments) {
+    fdpi::PacketDecoder decoder;
+
+    // HTTP GET request split across two TCP segments.
+    // First segment: "GET / HT" (no \r\n, HTTP parser will fail)
+    // Second segment: "TP/1.1\r\nHost: example.com\r\n\r\n"
+    uint32_t seq = 1000;
+    std::string part1 = "GET / HT";
+    auto seg1 = buildTcpPacketWithPayload(0xC0A80101, 0x0A000001, 50000, 80, part1, seq);
+    seq += static_cast<uint32_t>(part1.size());
+
+    auto r1 = decoder.decode(seg1);
+    ASSERT_TRUE(r1.has_value());
+    // First segment: incomplete HTTP, should be monostate
+    EXPECT_TRUE(std::holds_alternative<std::monostate>(r1->layer7))
+        << "Incomplete HTTP segment should not decode L7";
+
+    std::string part2 = "TP/1.1\r\nHost: example.com\r\n\r\n";
+    auto seg2 = buildTcpPacketWithPayload(0xC0A80101, 0x0A000001, 50000, 80, part2, seq);
+    seq += static_cast<uint32_t>(part2.size());
+
+    auto r2 = decoder.decode(seg2);
+    ASSERT_TRUE(r2.has_value());
+    // Second segment completes the HTTP request
+    auto* http = std::get_if<fdpi::HTTP>(&r2->layer7);
+    ASSERT_NE(http, nullptr) << "Completing segment should decode HTTP";
+    EXPECT_TRUE(http->isRequest);
+    EXPECT_EQ(http->method, "GET");
+    EXPECT_EQ(http->uri, "/");
+}
+
+TEST(PacketDecoder, StreamReassembly_CompleteHttpInSingleSegment) {
+    fdpi::PacketDecoder decoder;
+
+    // Complete HTTP request in a single TCP segment — should decode as before
+    std::string request = "GET /index.html HTTP/1.1\r\nHost: test.com\r\n\r\n";
+    auto pkt =
+        buildTcpPacketWithPayload(0xC0A80101, 0x0A000001, 50000, 80, request, 1000);
+
+    auto r = decoder.decode(pkt);
+    ASSERT_TRUE(r.has_value());
+    auto* http = std::get_if<fdpi::HTTP>(&r->layer7);
+    ASSERT_NE(http, nullptr) << "Complete HTTP in single segment should decode";
+    EXPECT_TRUE(http->isRequest);
+    EXPECT_EQ(http->method, "GET");
+    EXPECT_EQ(http->uri, "/index.html");
+}
+
+TEST(PacketDecoder, StreamReassembly_UdpUnaffected) {
+    fdpi::PacketDecoder decoder;
+
+    // DNS over UDP — should decode on the single packet (unchanged behavior)
+    auto pkt = buildDnsQueryPacket("example.com");
+    auto r = decoder.decode(pkt);
+    ASSERT_TRUE(r.has_value());
+    auto* dns = std::get_if<fdpi::DNS>(&r->layer7);
+    ASSERT_NE(dns, nullptr) << "UDP DNS should decode on single packet";
+    EXPECT_FALSE(dns->questions.empty());
+    EXPECT_EQ(dns->questions[0].name, "example.com");
+}
+
+TEST(PacketDecoder, StreamReassembly_DisabledFallsBackToPerPacket) {
+    // With enableTcpReassembly=false, TCP HTTP in one segment should
+    // still decode via the per-packet path
+    fdpi::PacketDecoder::Config cfg;
+    cfg.enableTcpReassembly = false;
+    fdpi::PacketDecoder decoder(cfg);
+
+    std::string request = "GET /test HTTP/1.1\r\nHost: test.com\r\n\r\n";
+    auto pkt =
+        buildTcpPacketWithPayload(0xC0A80101, 0x0A000001, 50000, 80, request, 1000);
+
+    auto r = decoder.decode(pkt);
+    ASSERT_TRUE(r.has_value());
+    auto* http = std::get_if<fdpi::HTTP>(&r->layer7);
+    ASSERT_NE(http, nullptr)
+        << "With reassembly disabled, per-packet HTTP should still work";
+    EXPECT_TRUE(http->isRequest);
+    EXPECT_EQ(http->method, "GET");
+}
+
+TEST(PacketDecoder, StreamReassembly_TlsSplitAcrossSegments) {
+    fdpi::PacketDecoder decoder;
+
+    // Build a minimal TLS ClientHello and split it across two segments.
+    // TLS record: content_type=22 (Handshake), version=0x0301, length
+    // Handshake: type=1 (ClientHello), length, version, random (32 bytes),
+    // session_id_len=0, cipher_suites_len=2, cipher, compression_len=1,
+    // comp=0
+
+    std::vector<uint8_t> clientHello;
+    // Handshake header: type=1 (ClientHello)
+    clientHello.push_back(0x01);
+    // Handshake length (3 bytes) — placeholder, fill after
+    clientHello.push_back(0x00);
+    clientHello.push_back(0x00);
+    clientHello.push_back(0x00); // will fill in
+
+    // ClientHello body:
+    // Version: TLS 1.2 (0x0303)
+    clientHello.push_back(0x03);
+    clientHello.push_back(0x03);
+    // Random (32 bytes)
+    for (int i = 0; i < 32; ++i)
+        clientHello.push_back(static_cast<uint8_t>(i));
+    // Session ID length: 0
+    clientHello.push_back(0x00);
+    // Cipher suites length: 2
+    clientHello.push_back(0x00);
+    clientHello.push_back(0x02);
+    // One cipher suite: TLS_AES_128_GCM_SHA256 (0x1301)
+    clientHello.push_back(0x13);
+    clientHello.push_back(0x01);
+    // Compression methods length: 1
+    clientHello.push_back(0x01);
+    // Compression method: null
+    clientHello.push_back(0x00);
+    // Extensions length: 0
+    clientHello.push_back(0x00);
+    clientHello.push_back(0x00);
+
+    // Fix handshake length
+    uint32_t hsBodyLen = static_cast<uint32_t>(clientHello.size() - 4);
+    clientHello[1] = static_cast<uint8_t>((hsBodyLen >> 16) & 0xFF);
+    clientHello[2] = static_cast<uint8_t>((hsBodyLen >> 8) & 0xFF);
+    clientHello[3] = static_cast<uint8_t>(hsBodyLen & 0xFF);
+
+    // TLS record header
+    std::vector<uint8_t> tlsRecord;
+    tlsRecord.push_back(0x16); // content_type = Handshake
+    tlsRecord.push_back(0x03);
+    tlsRecord.push_back(0x01); // version = TLS 1.0
+    uint16_t recordLen = static_cast<uint16_t>(clientHello.size());
+    tlsRecord.push_back(static_cast<uint8_t>(recordLen >> 8));
+    tlsRecord.push_back(static_cast<uint8_t>(recordLen & 0xFF));
+    tlsRecord.insert(tlsRecord.end(), clientHello.begin(), clientHello.end());
+
+    // Split into two parts — first part is just the TLS record header (5 bytes)
+    std::string strPart1(tlsRecord.begin(), tlsRecord.begin() + 5);
+    std::string strPart2(tlsRecord.begin() + 5, tlsRecord.end());
+
+    uint32_t seq = 1000;
+
+    auto seg1 =
+        buildTcpPacketWithPayload(0xC0A80101, 0x0A000001, 50000, 443, strPart1, seq);
+    seq += static_cast<uint32_t>(strPart1.size());
+
+    auto r1 = decoder.decode(seg1);
+    ASSERT_TRUE(r1.has_value());
+    // First segment: incomplete TLS record, should be monostate
+    EXPECT_TRUE(std::holds_alternative<std::monostate>(r1->layer7))
+        << "Incomplete TLS segment should not decode L7";
+
+    auto seg2 =
+        buildTcpPacketWithPayload(0xC0A80101, 0x0A000001, 50000, 443, strPart2, seq);
+
+    auto r2 = decoder.decode(seg2);
+    ASSERT_TRUE(r2.has_value());
+    // Second segment completes the TLS ClientHello
+    auto* tls = std::get_if<fdpi::TLS>(&r2->layer7);
+    ASSERT_NE(tls, nullptr) << "Completing segment should decode TLS";
+    EXPECT_EQ(tls->contentType, 22); // Handshake
 }

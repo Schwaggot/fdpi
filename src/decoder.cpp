@@ -74,6 +74,12 @@ struct Pop3FlowState {
     bool inDataMode = false;
 };
 
+struct L7StreamState {
+    std::vector<uint8_t> buffer;
+    AppProtocol detected{AppProtocol::Unknown};
+    bool detectionDone{false};
+};
+
 struct PacketDecoder::Impl {
     Config config;
     FlowTable flowTable;
@@ -81,13 +87,297 @@ struct PacketDecoder::Impl {
     TcpReassembler reassembler;
     ProtocolDetectionEngine detector;
     std::unordered_map<FlowId, Pop3FlowState, FlowIdHash> pop3States;
+    std::unordered_map<FlowId, L7StreamState, FlowIdHash> l7Streams;
 
     explicit Impl(const Config& cfg)
         : config(cfg),
           flowTable(cfg.flowTableConfig),
           defragmenter(cfg.defragConfig),
           reassembler(cfg.reassemblyConfig) {}
+
+    bool decodeL7(Packet& pkt,
+                  AppProtocol detected,
+                  std::span<const uint8_t> data,
+                  size_t& offset);
 };
+
+// Attempts to decode L7 protocol from the given data span.
+// Returns true if pkt.layer7 was populated.
+bool PacketDecoder::Impl::decodeL7(Packet& pkt,
+                                   AppProtocol detected,
+                                   std::span<const uint8_t> data,
+                                   size_t& offset) {
+    switch (detected) {
+    case AppProtocol::DNS: {
+        // DNS over TCP has a 2-byte length prefix (RFC 1035 §4.2.2)
+        if (std::holds_alternative<TCP>(pkt.layer4)) {
+            if (data.size() < 2)
+                return false;
+            offset = 2;
+        }
+        if (auto result = decodeDns(data, offset)) {
+            pkt.layer7 = std::move(*result);
+            return true;
+        }
+        return false;
+    }
+    case AppProtocol::HTTP: {
+        if (auto result = decodeHttp(data, offset)) {
+            // Check for OCSP sub-protocol via Content-Type header
+            for (const auto& [key, val] : result->headers) {
+                if ((key == "Content-Type" || key == "content-type") &&
+                    val.find("application/ocsp") != std::string::npos) {
+                    if (offset < data.size()) {
+                        size_t ocspOff = offset;
+                        if (auto ocsp = decodeOcsp(data, ocspOff)) {
+                            result->ocspPayload = std::move(*ocsp);
+                        }
+                    }
+                    break;
+                }
+            }
+            pkt.layer7 = std::move(*result);
+            return true;
+        }
+        return false;
+    }
+    case AppProtocol::TLS: {
+        if (auto result = decodeTls(data, offset)) {
+            pkt.layer7 = std::move(*result);
+            return true;
+        }
+        return false;
+    }
+    case AppProtocol::QUIC: {
+        if (auto result = decodeQuic(data, offset)) {
+            pkt.layer7 = std::move(*result);
+            return true;
+        }
+        return false;
+    }
+    case AppProtocol::FTP: {
+        if (auto result = decodeFtp(data, offset)) {
+            pkt.layer7 = std::move(*result);
+            return true;
+        }
+        return false;
+    }
+    case AppProtocol::SSH: {
+        if (auto result = decodeSsh(data, offset)) {
+            pkt.layer7 = std::move(*result);
+            return true;
+        }
+        return false;
+    }
+    case AppProtocol::DHCP: {
+        if (auto result = decodeDhcp(data, offset)) {
+            pkt.layer7 = std::move(*result);
+            return true;
+        }
+        return false;
+    }
+    case AppProtocol::DHCPv6: {
+        if (auto result = decodeDhcpv6(data, offset)) {
+            pkt.layer7 = std::move(*result);
+            return true;
+        }
+        return false;
+    }
+    case AppProtocol::SMTP: {
+        if (auto result = decodeSmtp(data, offset)) {
+            pkt.layer7 = std::move(*result);
+            return true;
+        }
+        return false;
+    }
+    case AppProtocol::POP3: {
+        auto& state = pop3States[pkt.flowId];
+
+        if (state.inDataMode) {
+            std::string_view sv(reinterpret_cast<const char*>(data.data()), data.size());
+            if (sv.starts_with(".\r\n") ||
+                sv.find("\r\n.\r\n") != std::string_view::npos) {
+                state.inDataMode = false;
+            }
+            return false;
+        }
+
+        auto result = decodePop3(data, offset);
+        if (!result)
+            return false;
+        pkt.layer7 = std::move(*result);
+
+        auto& pop3 = std::get<POP3>(pkt.layer7);
+        if (!pop3.isResponse) {
+            bool multiline = (pop3.command == "RETR" || pop3.command == "TOP") ||
+                             ((pop3.command == "LIST" || pop3.command == "UIDL") &&
+                              pop3.argument.empty());
+            if (multiline) {
+                auto rev = reverseFlowId(pkt.flowId);
+                pop3States[rev].pendingMultiline = true;
+            }
+        } else if (state.pendingMultiline) {
+            state.pendingMultiline = false;
+            if (pop3.success) {
+                state.inDataMode = true;
+            }
+        }
+        return true;
+    }
+    case AppProtocol::IMAP: {
+        if (auto result = decodeImap(data, offset)) {
+            pkt.layer7 = std::move(*result);
+            return true;
+        }
+        return false;
+    }
+    case AppProtocol::SNMP: {
+        if (auto result = decodeSnmp(data, offset)) {
+            pkt.layer7 = std::move(*result);
+            return true;
+        }
+        return false;
+    }
+    case AppProtocol::RDP: {
+        if (auto result = decodeRdp(data, offset)) {
+            pkt.layer7 = std::move(*result);
+            return true;
+        }
+        return false;
+    }
+    case AppProtocol::BGP: {
+        if (auto result = decodeBgp(data, offset)) {
+            pkt.layer7 = std::move(*result);
+            return true;
+        }
+        return false;
+    }
+    case AppProtocol::NTP: {
+        if (auto result = decodeNtp(data, offset)) {
+            pkt.layer7 = std::move(*result);
+            return true;
+        }
+        return false;
+    }
+    case AppProtocol::LDAP: {
+        if (auto result = decodeLdap(data, offset)) {
+            pkt.layer7 = std::move(*result);
+            return true;
+        }
+        return false;
+    }
+    case AppProtocol::MDNS:
+    case AppProtocol::LLMNR: {
+        if (auto result = decodeDns(data, offset)) {
+            pkt.layer7 = std::move(*result);
+            return true;
+        }
+        return false;
+    }
+    case AppProtocol::SSDP: {
+        if (auto result = decodeSsdp(data, offset)) {
+            pkt.layer7 = std::move(*result);
+            return true;
+        }
+        return false;
+    }
+    case AppProtocol::SrvLoc: {
+        if (auto result = decodeSrvloc(data, offset)) {
+            pkt.layer7 = std::move(*result);
+            return true;
+        }
+        return false;
+    }
+    case AppProtocol::NBNS: {
+        if (auto result = decodeNbns(data, offset)) {
+            pkt.layer7 = std::move(*result);
+            return true;
+        }
+        return false;
+    }
+    case AppProtocol::NBDGM: {
+        if (auto result = decodeNbdgm(data, offset)) {
+            pkt.layer7 = std::move(*result);
+            return true;
+        }
+        return false;
+    }
+    case AppProtocol::SMB: {
+        // TCP:139 (NetBIOS Session): skip 4-byte NBT session header
+        if (std::holds_alternative<TCP>(pkt.layer4)) {
+            auto* tcp = std::get_if<TCP>(&pkt.layer4);
+            if (tcp && (tcp->srcPort == 139 || tcp->dstPort == 139)) {
+                if (data.size() >= 4) {
+                    offset = 4;
+                }
+            }
+        }
+        if (auto result = decodeSmb(data, offset)) {
+            pkt.layer7 = std::move(*result);
+            return true;
+        }
+        return false;
+    }
+    case AppProtocol::RTMP: {
+        if (auto result = decodeRtmp(data, offset)) {
+            pkt.layer7 = std::move(*result);
+            return true;
+        }
+        return false;
+    }
+    case AppProtocol::IMF: {
+        if (auto result = decodeImf(data, offset)) {
+            pkt.layer7 = std::move(*result);
+            return true;
+        }
+        return false;
+    }
+    case AppProtocol::STUN: {
+        if (auto result = decodeStun(data, offset)) {
+            pkt.layer7 = std::move(*result);
+            return true;
+        }
+        return false;
+    }
+    case AppProtocol::Telnet: {
+        if (auto result = decodeTelnet(data, offset)) {
+            pkt.layer7 = std::move(*result);
+            return true;
+        }
+        return false;
+    }
+    case AppProtocol::TFTP: {
+        if (auto result = decodeTftp(data, offset)) {
+            pkt.layer7 = std::move(*result);
+            return true;
+        }
+        return false;
+    }
+    case AppProtocol::DTLS: {
+        if (auto result = decodeDtls(data, offset)) {
+            pkt.layer7 = std::move(*result);
+            return true;
+        }
+        return false;
+    }
+    case AppProtocol::RTCP: {
+        if (auto result = decodeRtcp(data, offset)) {
+            pkt.layer7 = std::move(*result);
+            return true;
+        }
+        return false;
+    }
+    case AppProtocol::DbLanSyncDisc: {
+        if (auto result = decodeDbLanSyncDisc(data, offset)) {
+            pkt.layer7 = std::move(*result);
+            return true;
+        }
+        return false;
+    }
+    default:
+        return false;
+    }
+}
 
 PacketDecoder::PacketDecoder(Config config) : mImpl(std::make_unique<Impl>(config)) {}
 
@@ -468,269 +758,63 @@ std::expected<Packet, Error> PacketDecoder::decode(std::span<const uint8_t> data
     // === Flow tracking ===
     mImpl->flowTable.update(pkt);
 
-    // === Protocol detection ===
+    // === Protocol detection + L7 decoding ===
     if (mImpl->config.enableProtocolDetection && !pkt.payload.empty()) {
-        auto detected = mImpl->detector.detectFlow(pkt.flowId, pkt, pkt.payload);
+        auto* tcpHdr = std::get_if<TCP>(&pkt.layer4);
 
-        // === L7: Application layer decoding ===
-        if (detected != AppProtocol::Unknown) {
-            size_t l7Offset = 0;
-            std::span<const uint8_t> payloadSpan(pkt.payload);
-
-            switch (detected) {
-            case AppProtocol::DNS: {
-                // DNS over TCP has a 2-byte length prefix (RFC 1035 §4.2.2)
-                if (std::holds_alternative<TCP>(pkt.layer4)) {
-                    if (payloadSpan.size() < 2)
-                        break;
-                    l7Offset = 2;
-                }
-                if (auto result = decodeDns(payloadSpan, l7Offset)) {
-                    pkt.layer7 = std::move(*result);
-                }
-                break;
-            }
-            case AppProtocol::HTTP: {
-                if (auto result = decodeHttp(payloadSpan, l7Offset)) {
-                    // Check for OCSP sub-protocol via Content-Type header
-                    for (const auto& [key, val] : result->headers) {
-                        if ((key == "Content-Type" || key == "content-type") &&
-                            val.find("application/ocsp") != std::string::npos) {
-                            if (l7Offset < payloadSpan.size()) {
-                                size_t ocspOff = l7Offset;
-                                if (auto ocsp = decodeOcsp(payloadSpan, ocspOff)) {
-                                    result->ocspPayload = std::move(*ocsp);
-                                }
-                            }
-                            break;
-                        }
-                    }
-                    pkt.layer7 = std::move(*result);
-                }
-                break;
-            }
-            case AppProtocol::TLS: {
-                if (auto result = decodeTls(payloadSpan, l7Offset)) {
-                    pkt.layer7 = std::move(*result);
-                }
-                break;
-            }
-            case AppProtocol::QUIC: {
-                if (auto result = decodeQuic(payloadSpan, l7Offset)) {
-                    pkt.layer7 = std::move(*result);
-                }
-                break;
-            }
-            case AppProtocol::FTP: {
-                if (auto result = decodeFtp(payloadSpan, l7Offset)) {
-                    pkt.layer7 = std::move(*result);
-                }
-                break;
-            }
-            case AppProtocol::SSH: {
-                if (auto result = decodeSsh(payloadSpan, l7Offset)) {
-                    pkt.layer7 = std::move(*result);
-                }
-                break;
-            }
-            case AppProtocol::DHCP: {
-                if (auto result = decodeDhcp(payloadSpan, l7Offset)) {
-                    pkt.layer7 = std::move(*result);
-                }
-                break;
-            }
-            case AppProtocol::DHCPv6: {
-                if (auto result = decodeDhcpv6(payloadSpan, l7Offset)) {
-                    pkt.layer7 = std::move(*result);
-                }
-                break;
-            }
-            case AppProtocol::SMTP: {
-                if (auto result = decodeSmtp(payloadSpan, l7Offset)) {
-                    pkt.layer7 = std::move(*result);
-                }
-                break;
-            }
-            case AppProtocol::POP3: {
-                auto& state = mImpl->pop3States[pkt.flowId];
-
-                if (state.inDataMode) {
-                    std::string_view sv(reinterpret_cast<const char*>(payloadSpan.data()),
-                                        payloadSpan.size());
-                    if (sv.starts_with(".\r\n") ||
-                        sv.find("\r\n.\r\n") != std::string_view::npos) {
-                        state.inDataMode = false;
-                    }
-                    break;
-                }
-
-                auto result = decodePop3(payloadSpan, l7Offset);
-                if (!result)
-                    break;
-                pkt.layer7 = std::move(*result);
-
-                auto& pop3 = std::get<POP3>(pkt.layer7);
-                if (!pop3.isResponse) {
-                    bool multiline =
-                        (pop3.command == "RETR" || pop3.command == "TOP") ||
-                        ((pop3.command == "LIST" || pop3.command == "UIDL") &&
-                         pop3.argument.empty());
-                    if (multiline) {
-                        auto rev = reverseFlowId(pkt.flowId);
-                        mImpl->pop3States[rev].pendingMultiline = true;
-                    }
-                } else if (state.pendingMultiline) {
-                    state.pendingMultiline = false;
-                    if (pop3.success) {
-                        state.inDataMode = true;
-                    }
-                }
-                break;
-            }
-            case AppProtocol::IMAP: {
-                if (auto result = decodeImap(payloadSpan, l7Offset)) {
-                    pkt.layer7 = std::move(*result);
-                }
-                break;
-            }
-            case AppProtocol::SNMP: {
-                if (auto result = decodeSnmp(payloadSpan, l7Offset)) {
-                    pkt.layer7 = std::move(*result);
-                }
-                break;
-            }
-            case AppProtocol::RDP: {
-                if (auto result = decodeRdp(payloadSpan, l7Offset)) {
-                    pkt.layer7 = std::move(*result);
-                }
-                break;
-            }
-            case AppProtocol::BGP: {
-                if (auto result = decodeBgp(payloadSpan, l7Offset)) {
-                    pkt.layer7 = std::move(*result);
-                }
-                break;
-            }
-            case AppProtocol::NTP: {
-                if (auto result = decodeNtp(payloadSpan, l7Offset)) {
-                    pkt.layer7 = std::move(*result);
-                }
-                break;
-            }
-            case AppProtocol::LDAP: {
-                if (auto result = decodeLdap(payloadSpan, l7Offset)) {
-                    pkt.layer7 = std::move(*result);
-                }
-                break;
-            }
-            case AppProtocol::MDNS:
-            case AppProtocol::LLMNR: {
-                if (auto result = decodeDns(payloadSpan, l7Offset)) {
-                    pkt.layer7 = std::move(*result);
-                }
-                break;
-            }
-            case AppProtocol::SSDP: {
-                if (auto result = decodeSsdp(payloadSpan, l7Offset)) {
-                    pkt.layer7 = std::move(*result);
-                }
-                break;
-            }
-            case AppProtocol::SrvLoc: {
-                if (auto result = decodeSrvloc(payloadSpan, l7Offset)) {
-                    pkt.layer7 = std::move(*result);
-                }
-                break;
-            }
-            case AppProtocol::NBNS: {
-                if (auto result = decodeNbns(payloadSpan, l7Offset)) {
-                    pkt.layer7 = std::move(*result);
-                }
-                break;
-            }
-            case AppProtocol::NBDGM: {
-                if (auto result = decodeNbdgm(payloadSpan, l7Offset)) {
-                    pkt.layer7 = std::move(*result);
-                }
-                break;
-            }
-            case AppProtocol::SMB: {
-                // TCP:139 (NetBIOS Session): skip 4-byte NBT session header
-                if (std::holds_alternative<TCP>(pkt.layer4)) {
-                    auto* tcp = std::get_if<TCP>(&pkt.layer4);
-                    if (tcp && (tcp->srcPort == 139 || tcp->dstPort == 139)) {
-                        if (payloadSpan.size() >= 4) {
-                            l7Offset = 4;
-                        }
-                    }
-                }
-                if (auto result = decodeSmb(payloadSpan, l7Offset)) {
-                    pkt.layer7 = std::move(*result);
-                }
-                break;
-            }
-            case AppProtocol::RTMP: {
-                if (auto result = decodeRtmp(payloadSpan, l7Offset)) {
-                    pkt.layer7 = std::move(*result);
-                }
-                break;
-            }
-            case AppProtocol::IMF: {
-                if (auto result = decodeImf(payloadSpan, l7Offset)) {
-                    pkt.layer7 = std::move(*result);
-                }
-                break;
-            }
-            case AppProtocol::STUN: {
-                if (auto result = decodeStun(payloadSpan, l7Offset)) {
-                    pkt.layer7 = std::move(*result);
-                }
-                break;
-            }
-            case AppProtocol::Telnet: {
-                if (auto result = decodeTelnet(payloadSpan, l7Offset)) {
-                    pkt.layer7 = std::move(*result);
-                }
-                break;
-            }
-            case AppProtocol::TFTP: {
-                if (auto result = decodeTftp(payloadSpan, l7Offset)) {
-                    pkt.layer7 = std::move(*result);
-                }
-                break;
-            }
-            case AppProtocol::DTLS: {
-                if (auto result = decodeDtls(payloadSpan, l7Offset)) {
-                    pkt.layer7 = std::move(*result);
-                }
-                break;
-            }
-            case AppProtocol::RTCP: {
-                if (auto result = decodeRtcp(payloadSpan, l7Offset)) {
-                    pkt.layer7 = std::move(*result);
-                }
-                break;
-            }
-            case AppProtocol::DbLanSyncDisc: {
-                if (auto result = decodeDbLanSyncDisc(payloadSpan, l7Offset)) {
-                    pkt.layer7 = std::move(*result);
-                }
-                break;
-            }
-            default:
-                break;
-            }
-
-            // Update flow metadata with detected protocol
-            // (already updated via flowTable.update above, but detection is new)
-        }
-    }
-
-    // TCP reassembly (optional)
-    if (mImpl->config.enableTcpReassembly) {
-        if (auto* tcpHdr = std::get_if<TCP>(&pkt.layer4)) {
-            if (!pkt.payload.empty()) {
+        if (tcpHdr && mImpl->config.enableTcpReassembly) {
+            // --- TCP stream-first path ---
+            // 1. Feed segment to reassembler
+            auto reassembled =
                 mImpl->reassembler.process(pkt.flowId, *tcpHdr, pkt.payload);
+
+            if (reassembled && !reassembled->empty()) {
+                auto& stream = mImpl->l7Streams[pkt.flowId];
+
+                // Buffer size check
+                if (stream.buffer.size() + reassembled->size() >
+                    mImpl->config.maxL7StreamBytes) {
+                    mImpl->l7Streams.erase(pkt.flowId);
+                } else {
+                    // Append reassembled data to stream buffer
+                    stream.buffer.insert(stream.buffer.end(), reassembled->begin(),
+                                         reassembled->end());
+
+                    // Detect protocol if not yet decided
+                    if (!stream.detectionDone) {
+                        auto detected =
+                            mImpl->detector.detectFlow(pkt.flowId, pkt, stream.buffer);
+                        if (detected != AppProtocol::Unknown) {
+                            stream.detected = detected;
+                            stream.detectionDone = true;
+                        }
+                    }
+
+                    // Attempt L7 decode if protocol is known
+                    if (stream.detected != AppProtocol::Unknown) {
+                        size_t l7Offset = 0;
+                        std::span<const uint8_t> bufSpan(stream.buffer);
+                        if (mImpl->decodeL7(pkt, stream.detected, bufSpan, l7Offset)) {
+                            // Consume decoded bytes from buffer
+                            stream.buffer.erase(stream.buffer.begin(),
+                                                stream.buffer.begin() +
+                                                    static_cast<ptrdiff_t>(l7Offset));
+                        }
+                    }
+                }
+            }
+
+            // FIN/RST cleanup
+            if (tcpHdr->fin() || tcpHdr->rst()) {
+                mImpl->l7Streams.erase(pkt.flowId);
+            }
+        } else {
+            // --- Non-TCP / reassembly-disabled path (unchanged) ---
+            auto detected = mImpl->detector.detectFlow(pkt.flowId, pkt, pkt.payload);
+            if (detected != AppProtocol::Unknown) {
+                size_t l7Offset = 0;
+                std::span<const uint8_t> payloadSpan(pkt.payload);
+                mImpl->decodeL7(pkt, detected, payloadSpan, l7Offset);
             }
         }
     }

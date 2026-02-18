@@ -79,6 +79,7 @@ struct PacketDecoderConfig {
     bool enableDefragmentation{true};
     bool enableTcpReassembly{true};
     bool enableProtocolDetection{true};
+    size_t maxL7StreamBytes{1 * 1024 * 1024}; // 1MB per-flow L7 buffer limit
     FlowTableConfig flowTableConfig{};
     IpDefragmenterConfig defragConfig{};
     TcpReassemblerConfig reassemblyConfig{};

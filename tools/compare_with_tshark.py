@@ -162,6 +162,9 @@ def baseline_path(pcap_path):
 def build_tshark_cmd(pcap_path):
     """Build the tshark command to extract fields."""
     cmd = ["tshark", "-r", str(pcap_path), "-T", "fields"]
+    # Disable TCP reassembly / desegmentation so tshark reports per-packet
+    # L7 fields (matching fdpi's per-packet mode).
+    cmd.extend(["-o", "tcp.desegment_tcp_streams:FALSE"])
     # Disable tshark's rtcp_udp heuristic dissector — it aggressively
     # pattern-matches on 2 bytes of random UDP payloads and produces false
     # positives (every match is flagged [Malformed Packet]).
