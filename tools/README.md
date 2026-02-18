@@ -82,52 +82,65 @@ python3 tools/compare_with_tshark.py full --pcap tracefiles/protocol-pcap/dns.pc
 ./build/tools/fdpi_compare tracefiles/protocol-pcap/dns.pcap
 ```
 
-## Compared Fields (116 total)
+## Compared Fields (144 total)
 
 The tool compares fields across all protocol layers fdpi supports:
 
-| Layer    | Fields                                                                                                                                                                    |
-|----------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Frame    | `frame.number`, `frame.len`, `frame.cap_len`                                                                                                                              |
-| Ethernet | `eth.src`, `eth.dst`, `eth.type`                                                                                                                                          |
-| IPv4     | `ip.version`, `ip.hdr_len`, `ip.dsfield.dscp`, `ip.dsfield.ecn`, `ip.len`, `ip.id`, `ip.flags`, `ip.frag_offset`, `ip.ttl`, `ip.proto`, `ip.checksum`, `ip.src`, `ip.dst` |
-| IPv6     | `ipv6.version`, `ipv6.tclass`, `ipv6.flow`, `ipv6.plen`, `ipv6.nxt`, `ipv6.hlim`, `ipv6.src`, `ipv6.dst`                                                                  |
-| ARP      | `arp.hw.type`, `arp.proto.type`, `arp.hw.size`, `arp.proto.size`, `arp.opcode`, `arp.src.hw_mac`, `arp.src.proto_ipv4`, `arp.dst.hw_mac`, `arp.dst.proto_ipv4`            |
-| TCP      | `tcp.srcport`, `tcp.dstport`, `tcp.seq_raw`, `tcp.ack_raw`, `tcp.hdr_len`, `tcp.flags`, `tcp.window_size_value`, `tcp.checksum`, `tcp.urgent_pointer`                     |
-| UDP      | `udp.srcport`, `udp.dstport`, `udp.length`, `udp.checksum`                                                                                                                |
-| ICMP     | `icmp.type`, `icmp.code`, `icmp.checksum`                                                                                                                                 |
-| ICMPv6   | `icmpv6.type`, `icmpv6.code`, `icmpv6.checksum`                                                                                                                           |
-| DNS      | `dns.id`, `dns.flags.*` (7 flags), `dns.count.queries`, `dns.count.answers`, `dns.qry.name`, `dns.qry.type`                                                               |
-| HTTP     | `http.request.method`, `http.request.uri`, `http.response.code`, `http.request.version`                                                                                   |
-| TLS      | `tls.record.content_type`, `tls.record.version`, `tls.handshake.extensions_server_name`                                                                                   |
-| QUIC     | `quic.long.packet_type`, `quic.version`, `quic.dcid`, `quic.scid`                                                                                                         |
-| FTP      | `ftp.request.command`, `ftp.request.arg`, `ftp.response.code`, `ftp.response.arg`                                                                                         |
-| SSH      | `ssh.protocol`                                                                                                                                                            |
-| DHCP     | `dhcp.type`, `dhcp.hw.type`, `dhcp.hw.len`, `dhcp.hops`, `dhcp.id`, `dhcp.secs`, `dhcp.flags`, `dhcp.ip.*` (4 fields), `dhcp.hw.mac_addr`, `dhcp.option.dhcp`             |
-| DHCPv6   | `dhcpv6.msgtype`, `dhcpv6.xid`                                                                                                                                            |
-| SMTP     | `smtp.req.command`, `smtp.req.parameter`, `smtp.response.code`                                                                                                            |
-| POP3     | `pop.request.command`, `pop.request.parameter`, `pop.response.indicator`                                                                                                  |
-| IMAP     | `imap.request_tag`, `imap.request.command`                                                                                                                                |
-| SNMP     | `snmp.version`, `snmp.community`                                                                                                                                          |
-| NTP      | `ntp.flags.li`, `ntp.flags.vn`, `ntp.flags.mode`, `ntp.stratum`                                                                                                           |
-| BGP      | `bgp.type`                                                                                                                                                                |
-| LDAP     | `ldap.messageID`                                                                                                                                                          |
-| TPKT/RDP | `tpkt.version`, `tpkt.length`                                                                                                                                             |
+| Layer       | Fields                                                                                                                                                                    |
+|-------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Frame       | `frame.number`, `frame.len`, `frame.cap_len`                                                                                                                              |
+| Ethernet    | `eth.src`, `eth.dst`, `eth.type`                                                                                                                                          |
+| WiFi        | `wlan.fc.type`, `wlan.fc.subtype`, `wlan.sa`, `wlan.da`                                                                                                                   |
+| IPv4        | `ip.version`, `ip.hdr_len`, `ip.dsfield.dscp`, `ip.dsfield.ecn`, `ip.len`, `ip.id`, `ip.flags`, `ip.frag_offset`, `ip.ttl`, `ip.proto`, `ip.checksum`, `ip.src`, `ip.dst` |
+| IPv6        | `ipv6.version`, `ipv6.tclass`, `ipv6.flow`, `ipv6.plen`, `ipv6.nxt`, `ipv6.hlim`, `ipv6.src`, `ipv6.dst`                                                                  |
+| ARP         | `arp.hw.type`, `arp.proto.type`, `arp.hw.size`, `arp.proto.size`, `arp.opcode`, `arp.src.hw_mac`, `arp.src.proto_ipv4`, `arp.dst.hw_mac`, `arp.dst.proto_ipv4`            |
+| TCP         | `tcp.srcport`, `tcp.dstport`, `tcp.seq_raw`, `tcp.ack_raw`, `tcp.hdr_len`, `tcp.flags`, `tcp.window_size_value`, `tcp.checksum`, `tcp.urgent_pointer`                     |
+| UDP         | `udp.srcport`, `udp.dstport`, `udp.length`, `udp.checksum`                                                                                                                |
+| ICMP        | `icmp.type`, `icmp.code`, `icmp.checksum`                                                                                                                                 |
+| ICMPv6      | `icmpv6.type`, `icmpv6.code`, `icmpv6.checksum`                                                                                                                           |
+| DNS         | `dns.id`, `dns.flags.*` (7 flags), `dns.count.queries`, `dns.count.answers`, `dns.qry.name`, `dns.qry.type`                                                               |
+| HTTP        | `http.request.method`, `http.request.uri`, `http.response.code`, `http.request.version`                                                                                   |
+| TLS         | `tls.record.content_type`, `tls.record.version`, `tls.handshake.extensions_server_name`                                                                                   |
+| QUIC        | `quic.long.packet_type`, `quic.version`, `quic.dcid`, `quic.scid`                                                                                                         |
+| FTP         | `ftp.request.command`, `ftp.request.arg`, `ftp.response.code`, `ftp.response.arg`                                                                                         |
+| SSH         | `ssh.protocol`                                                                                                                                                            |
+| DHCP        | `dhcp.type`, `dhcp.hw.type`, `dhcp.hw.len`, `dhcp.hops`, `dhcp.id`, `dhcp.secs`, `dhcp.flags`, `dhcp.ip.*` (4 fields), `dhcp.hw.mac_addr`, `dhcp.option.dhcp`             |
+| DHCPv6      | `dhcpv6.msgtype`, `dhcpv6.xid`                                                                                                                                            |
+| SMTP        | `smtp.req.command`, `smtp.req.parameter`, `smtp.response.code`                                                                                                            |
+| POP3        | `pop.request.command`, `pop.request.parameter`, `pop.response.indicator`                                                                                                  |
+| IMAP        | `imap.request_tag`, `imap.request.command`                                                                                                                                |
+| SNMP        | `snmp.version`, `snmp.msgVersion`, `snmp.community`                                                                                                                       |
+| NTP         | `ntp.flags.li`, `ntp.flags.vn`, `ntp.flags.mode`, `ntp.stratum`                                                                                                           |
+| BGP         | `bgp.type`                                                                                                                                                                |
+| LDAP        | `ldap.messageID`                                                                                                                                                          |
+| TPKT/RDP    | `tpkt.version`, `tpkt.length`                                                                                                                                             |
+| Telnet      | `telnet.cmd`, `telnet.data`                                                                                                                                               |
+| TFTP        | `tftp.opcode`, `tftp.source_file`, `tftp.destination_file`, `tftp.type`, `tftp.block`, `tftp.error.code`, `tftp.error.message`                                            |
+| STUN        | `stun.type`, `stun.length`, `stun.cookie`                                                                                                                                 |
+| DTLS        | `dtls.record.content_type`, `dtls.record.version`, `dtls.record.epoch`, `dtls.record.length`                                                                              |
+| RTCP        | `rtcp.pt`, `rtcp.length`, `rtcp.senderssrc`                                                                                                                               |
+| LLDP        | `lldp.chassis.id.mac`, `lldp.port.id.mac`, `lldp.time_to_live`                                                                                                            |
+| HomePlug-AV | `homeplug_av.mmhdr.mmtype.qualcomm`                                                                                                                                       |
 
 ## Normalization
 
 The comparison script normalizes values before comparing to account for known format differences between fdpi and
 tshark:
 
-| Category                   | Example                               | Normalization                          |
-|----------------------------|---------------------------------------|----------------------------------------|
-| Hex values                 | `0x0800` vs `0x00000800`              | Strip leading zeros, case-insensitive  |
-| Booleans                   | `True`/`False` vs `1`/`0`             | Normalize to `1`/`0`                   |
-| DNS names                  | `example.com.` vs `example.com`       | Strip trailing dots                    |
-| MAC addresses              | `AA:BB:CC:DD:EE:FF`                   | Lowercase                              |
-| IPv6 addresses             | mixed case                            | Lowercase                              |
-| Empty response-only fields | tshark leaves empty, fdpi outputs `0` | Treat empty as `0` for DNS flag fields |
-| DHCP hw.type               | `0x01` vs `1`                         | Compare as integer                     |
+| Category                   | Example                               | Normalization                                    |
+|----------------------------|---------------------------------------|--------------------------------------------------|
+| Hex values                 | `0x0800` vs `0x00000800`              | Strip leading zeros, case-insensitive            |
+| Booleans                   | `True`/`False` vs `1`/`0`             | Normalize to `1`/`0`                             |
+| DNS names                  | `example.com.` vs `example.com`       | Strip trailing dots                              |
+| MAC addresses              | `AA:BB:CC:DD:EE:FF`                   | Lowercase                                        |
+| IPv6 addresses             | mixed case                            | Lowercase                                        |
+| Empty response-only fields | tshark leaves empty, fdpi outputs `0` | Treat empty as `0` for DNS flag fields           |
+| DHCP hw.type               | `0x01` vs `1`                         | Compare as integer                               |
+| Telnet data                | `\r\n` line splitting                 | Strip `\r\n` escapes and comma separators        |
+| TFTP filenames             | tshark carries across packets         | Skip comparison on non-RRQ/WRQ packets           |
+| QUIC connection IDs        | `AB:CD` vs `abcd`                     | Lowercase, strip colons                          |
+| SNMP version               | `snmp.version` vs `snmp.msgVersion`   | tshark uses different fields for v1/v2c vs v3    |
+| Multi-value fields         | VxLAN `110,60` vs `60`                | Check if fdpi value matches any tshark sub-value |
 
 ## Extending with New Protocols
 
@@ -189,53 +202,16 @@ python3 tools/compare_with_tshark.py full --pcap tracefiles/protocol-pcap/yourpr
 
 ## Current Results
 
-Tested against 94 PCAPs in `tracefiles/` (88 compared, 6 skipped as 802.11 wireless).
+Tested against 108 PCAPs in `tracefiles/`. Run the comparison tool to get up-to-date results:
 
-### 100% match (34 PCAPs)
-
-These PCAPs match tshark field-for-field on every packet:
-
-arp_gratuitous, arp_resolution, dhcp_inlease_renewal, dhcp_nolease_initialization,
-dns (chrissanders), dns_lab, dns_query_nonexistent, dns_query_response,
-dns_recursivequery_client, dns_recursivequery_server, dns_reverse_lookup, dns (protocol-pcap),
-ftp-cmd-data, ftp-data, icmp_echo, inconsistent_printer, ip_ttl_dest, ip_ttl_source,
-nowebaccess1, nowebaccess2, nowebaccess3, passiveosfingerprinting, ratinfected,
-rtmp_live_flow, stranded_branchdns, stranded_clientside, synscan, tcp_dupack,
-tcp_handshake, tcp_refuseconnection, tcp_retransmissions, tcp_teardown,
-tcp_zerowindowdead, tcp_zerowindowrecovery, tickedoffdeveloper, udp_dnsrequest,
-wrongdissector
-
-### 95-99% match (30+ PCAPs)
-
-High match rates with minor differences, typically in L7 protocol detection timing (fdpi and tshark may detect
-HTTP/TLS/FTP on different packets within the same flow):
-
-activeosfingerprinting (99.9%), aurora (99.4%), cryptowall4_c2 (99.5%),
-dns_isp_hijack (99.6%), http_dvwa_* (98-99%), http_google (99.1%),
-mail_sender_* (98-99%), tcp_ports (99.2%), ipv6-some (96.7%)
-
-### Lower match rates
-
-Primarily caused by **packet count differences** between tshark and fdpi, which cause cascading mismatches when
-comparing line-by-line:
-
-| PCAP                     | Match Rate | Cause                                          |
-|--------------------------|------------|------------------------------------------------|
-| lotsofweb.pcapng         | 58.5%      | tshark: 12899 packets, fdpi: 13236 (337 extra) |
-| ipv6-http.pcap           | 62.1%      | Packet count mismatch in large trace           |
-| http_espn.pcapng         | 67.4%      | Packet count mismatch                          |
-| ek_to_cryptowall4.pcapng | 73.6%      | Mixed HTTP/TLS traffic, detection differences  |
-| IPv4_Vxlan_12pkts.pcap   | 35.9%      | VxLAN encapsulation (fdpi decodes outer only)  |
-
-### Skipped (6 PCAPs)
-
-802.11 wireless PCAPs (non-Ethernet link layer): 3e80211_wepauth, 3e80211_wepauthfail,
-3e80211_wpaauth, 3e80211_wpaauthfail, 80211beacon, iquery-dns
+```bash
+python3 tools/compare_with_tshark.py full
+```
 
 ## Limitations
 
-- **Ethernet only.** fdpi only supports Ethernet (link layer type 1). 802.11, raw IP, and other link types are detected
-  and skipped with exit code 2.
+- **Ethernet and WiFi only.** fdpi supports Ethernet (link layer type 1) and 802.11 WiFi (link layer type 105). Raw IP
+  and other link types are detected and skipped with exit code 2.
 - **Packet count mismatches cause cascading errors.** The comparison is strictly line-by-line. If tshark and fdpi
   disagree on how many packets a PCAP contains, all subsequent fields are misaligned.
 - **No TCP reassembly comparison.** Both fdpi and tshark have defragmentation and TCP reassembly disabled for this
@@ -249,3 +225,5 @@ comparing line-by-line:
   differ for QUIC packets.
 - **tshark baselines are not committed.** Generated baselines are in `.gitignore` and must be regenerated locally (
   requires tshark). This ensures results always reflect the local tshark version.
+- **tshark RTCP heuristic disabled.** The `rtcp_udp` heuristic dissector is disabled because it aggressively
+  pattern-matches on random UDP payloads and produces false positives flagged as malformed packets.
