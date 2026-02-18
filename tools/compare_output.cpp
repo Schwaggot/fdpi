@@ -481,8 +481,14 @@ void setSTUN(Row& row, const fdpi::STUN& stun) {
 
 void setTelnet(Row& row, const fdpi::Telnet& telnet) {
     if (!telnet.commands.empty()) {
-        // Report first command byte (matches tshark telnet.cmd)
-        row[colIndex("telnet.cmd")] = decStr(telnet.commands[0].command);
+        // tshark reports all command bytes comma-separated
+        std::string cmds;
+        for (size_t i = 0; i < telnet.commands.size(); ++i) {
+            if (i > 0)
+                cmds += ',';
+            cmds += decStr(telnet.commands[i].command);
+        }
+        row[colIndex("telnet.cmd")] = cmds;
     }
     if (!telnet.data.empty()) {
         row[colIndex("telnet.data")] = telnet.data;
@@ -491,8 +497,10 @@ void setTelnet(Row& row, const fdpi::Telnet& telnet) {
 
 void setTFTP(Row& row, const fdpi::TFTP& tftp) {
     row[colIndex("tftp.opcode")] = decStr(tftp.opcode);
-    // tshark uses tftp.type for the opcode text, we output the numeric opcode
-    row[colIndex("tftp.type")] = decStr(tftp.opcode);
+    // tshark tftp.type is the transfer mode string for RRQ/WRQ
+    if (tftp.opcode == 1 || tftp.opcode == 2) {
+        row[colIndex("tftp.type")] = tftp.mode;
+    }
     if (tftp.opcode == 1) { // RRQ
         row[colIndex("tftp.source_file")] = tftp.filename;
     } else if (tftp.opcode == 2) { // WRQ

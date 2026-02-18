@@ -293,6 +293,16 @@ def normalize_value(field, val):
     if field in hex_fields:
         return normalize_hex(val)
 
+    # Telnet data: tshark includes \r\n and splits lines with commas;
+    # fdpi strips control chars and concatenates. Normalize by removing
+    # \r\n escape sequences and commas used as line separators.
+    if field == "telnet.data":
+        # tshark outputs literal backslash-r backslash-n sequences
+        normalized = val.replace("\\r\\n", "").replace("\\r", "")
+        # tshark separates multiple data segments with commas
+        normalized = normalized.replace(",", "")
+        return normalized
+
     # DNS names: strip trailing dots
     if field in ("dns.qry.name",):
         return normalize_dns_name(val)

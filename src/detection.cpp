@@ -1,7 +1,9 @@
 #include <fdpi/decoder.hpp>
 #include <fdpi/packet.hpp>
+
 #include <mutex>
 #include <unordered_map>
+#include <unordered_set>
 
 namespace fdpi {
 
@@ -14,6 +16,7 @@ struct ProtocolDetectionEngine::Impl {
 
     std::mutex mutex;
     std::unordered_map<FlowId, FlowDetectionState, FlowIdHash> flowStates;
+    std::unordered_set<uint16_t> tftpPorts; // ephemeral ports from TFTP flows
 
     AppProtocol detectSingle(const Packet& packet,
                              const std::span<const uint8_t> payload) const {
@@ -506,7 +509,31 @@ AppProtocol ProtocolDetectionEngine::detectFlow(const FlowId& flowId,
 
     state.packetsSeen++;
 
-    const auto detected = mImpl->detectSingle(packet, payload);
+    auto detected = mImpl->detectSingle(packet, payload);
+
+    // TFTP conversation tracking: detect DATA/ACK/ERROR on ephemeral ports
+    if (detected == AppProtocol::Unknown && std::holds_alternative<UDP>(packet.layer4)) {
+        if (mImpl->tftpPorts.contains(flowId.srcPort) ||
+            mImpl->tftpPorts.contains(flowId.dstPort)) {
+            if (payload.size() >= 4) {
+                uint16_t opcode = static_cast<uint16_t>((payload[0] << 8) | payload[1]);
+                if (opcode >= 1 && opcode <= 5) {
+                    detected = AppProtocol::TFTP;
+                }
+            }
+        }
+    }
+
+    // When TFTP is detected, track both ports for conversation following
+    if (detected == AppProtocol::TFTP) {
+        if (flowId.srcPort != 69) {
+            mImpl->tftpPorts.insert(flowId.srcPort);
+        }
+        if (flowId.dstPort != 69) {
+            mImpl->tftpPorts.insert(flowId.dstPort);
+        }
+    }
+
     if (detected != AppProtocol::Unknown) {
         state.result = detected;
         state.decided = true;
