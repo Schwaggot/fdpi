@@ -24,12 +24,13 @@ TEST(WifiDecoder, BeaconFrame) {
     auto result = fdpi::resolveDataLink(fdpi::DataLinkType::DLT_IEEE802_11, data, offset);
     ASSERT_TRUE(result.has_value());
     EXPECT_EQ(result->etherType, 0);
-    EXPECT_TRUE(result->hasMacs);
-    EXPECT_EQ(result->dstMac.bytes[0], 0xFF); // broadcast
-    EXPECT_EQ(result->srcMac.bytes[5], 0x01);
+    EXPECT_FALSE(result->hasMacs); // WiFi frames don't produce Ethernet MACs
     ASSERT_TRUE(result->wifi.has_value());
-    EXPECT_EQ(result->wifi->type, 0);    // Management
-    EXPECT_EQ(result->wifi->subtype, 8); // Beacon
+    EXPECT_EQ(result->wifi->addr1.bytes[0], 0xFF); // broadcast DA
+    ASSERT_TRUE(result->wifi->addr2.has_value());
+    EXPECT_EQ(result->wifi->addr2->bytes[5], 0x01); // SA
+    EXPECT_EQ(result->wifi->type, 0);               // Management
+    EXPECT_EQ(result->wifi->subtype, 8);            // Beacon
     EXPECT_TRUE(result->wifi->addr2.has_value());
     EXPECT_TRUE(result->wifi->addr3.has_value());
     EXPECT_EQ(offset, 24u);

@@ -19,6 +19,11 @@ const std::vector<std::string> COLUMNS = {
     "eth.src",
     "eth.dst",
     "eth.type",
+    // WiFi (802.11)
+    "wlan.fc.type",
+    "wlan.fc.subtype",
+    "wlan.sa",
+    "wlan.da",
     // IPv4
     "ip.version",
     "ip.hdr_len",
@@ -239,6 +244,47 @@ void setEthernet(Row& row, const fdpi::Ethernet& eth) {
     row[colIndex("eth.src")] = eth.src.toString();
     row[colIndex("eth.dst")] = eth.dst.toString();
     row[colIndex("eth.type")] = hex16(eth.etherType);
+}
+
+void setWifi(Row& row, const fdpi::WiFi& wifi) {
+    row[colIndex("wlan.fc.type")] = decStr(wifi.type);
+    row[colIndex("wlan.fc.subtype")] = decStr(wifi.subtype);
+
+    // Derive SA/DA from addr fields based on frame type and ToDS/FromDS
+    if (wifi.type == 0) {
+        // Management: DA=addr1, SA=addr2
+        row[colIndex("wlan.da")] = wifi.addr1.toString();
+        if (wifi.addr2) {
+            row[colIndex("wlan.sa")] = wifi.addr2->toString();
+        }
+    } else if (wifi.type == 2) {
+        // Data: depends on ToDS/FromDS
+        if (!wifi.toDS && !wifi.fromDS) {
+            // IBSS: DA=addr1, SA=addr2
+            row[colIndex("wlan.da")] = wifi.addr1.toString();
+            if (wifi.addr2)
+                row[colIndex("wlan.sa")] = wifi.addr2->toString();
+        } else if (!wifi.toDS && wifi.fromDS) {
+            // From AP: DA=addr1, SA=addr3
+            row[colIndex("wlan.da")] = wifi.addr1.toString();
+            if (wifi.addr3)
+                row[colIndex("wlan.sa")] = wifi.addr3->toString();
+        } else if (wifi.toDS && !wifi.fromDS) {
+            // To AP: DA=addr3, SA=addr2
+            if (wifi.addr3)
+                row[colIndex("wlan.da")] = wifi.addr3->toString();
+            if (wifi.addr2)
+                row[colIndex("wlan.sa")] = wifi.addr2->toString();
+        } else {
+            // WDS: DA=addr3, SA=addr4
+            if (wifi.addr3)
+                row[colIndex("wlan.da")] = wifi.addr3->toString();
+            if (wifi.addr4)
+                row[colIndex("wlan.sa")] = wifi.addr4->toString();
+        }
+    }
+    // Control frames: tshark may show wlan.da=addr1 but SA varies by subtype;
+    // skip for now since our WiFi pcaps are mostly management/data
 }
 
 void setIPv4(Row& row, const fdpi::IPv4& ip) {
@@ -747,6 +793,10 @@ int main(int argc, char* argv[]) {
 
         if (pkt.ethernet) {
             setEthernet(row, *pkt.ethernet);
+        }
+
+        if (pkt.wifi) {
+            setWifi(row, *pkt.wifi);
         }
 
         setLayer3(row, pkt.layer3);

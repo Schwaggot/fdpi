@@ -367,10 +367,12 @@ TEST(DataLink, WifiDataFrameIBSS) {
     auto result = fdpi::resolveDataLink(fdpi::DataLinkType::DLT_IEEE802_11, data, offset);
     ASSERT_TRUE(result.has_value());
     EXPECT_EQ(result->etherType, 0x0800);
-    EXPECT_TRUE(result->hasMacs);
-    // IBSS: DA=addr1, SA=addr2
-    EXPECT_EQ(result->dstMac.bytes[0], 0xA1);
-    EXPECT_EQ(result->srcMac.bytes[0], 0xB1);
+    EXPECT_FALSE(result->hasMacs); // WiFi frames don't produce Ethernet MACs
+    ASSERT_TRUE(result->wifi.has_value());
+    // IBSS: addr1=DA, addr2=SA
+    EXPECT_EQ(result->wifi->addr1.bytes[0], 0xA1);
+    ASSERT_TRUE(result->wifi->addr2.has_value());
+    EXPECT_EQ(result->wifi->addr2->bytes[0], 0xB1);
     EXPECT_EQ(offset, 32u); // 24 header + 8 LLC/SNAP
 }
 
@@ -389,8 +391,12 @@ TEST(DataLink, WifiDataFrameFromAP) {
     auto result = fdpi::resolveDataLink(fdpi::DataLinkType::DLT_IEEE802_11, data, offset);
     ASSERT_TRUE(result.has_value());
     EXPECT_EQ(result->etherType, 0x86DD);
-    EXPECT_EQ(result->dstMac.bytes[0], 0xA1);
-    EXPECT_EQ(result->srcMac.bytes[0], 0xC1); // SA from addr3
+    EXPECT_FALSE(result->hasMacs);
+    ASSERT_TRUE(result->wifi.has_value());
+    // FromAP: addr1=DA, addr3=SA
+    EXPECT_EQ(result->wifi->addr1.bytes[0], 0xA1);
+    ASSERT_TRUE(result->wifi->addr3.has_value());
+    EXPECT_EQ(result->wifi->addr3->bytes[0], 0xC1); // SA from addr3
 }
 
 TEST(DataLink, WifiManagementFrame) {
@@ -461,9 +467,11 @@ TEST(DataLink, RadiotapDataFrame) {
         fdpi::resolveDataLink(fdpi::DataLinkType::DLT_IEEE802_11_RADIOTAP, data, offset);
     ASSERT_TRUE(result.has_value());
     EXPECT_EQ(result->etherType, 0x0800);
-    EXPECT_TRUE(result->hasMacs);
-    EXPECT_EQ(result->dstMac.bytes[0], 0xA1);
-    EXPECT_EQ(result->srcMac.bytes[0], 0xB1);
+    EXPECT_FALSE(result->hasMacs); // WiFi frames don't produce Ethernet MACs
+    ASSERT_TRUE(result->wifi.has_value());
+    EXPECT_EQ(result->wifi->addr1.bytes[0], 0xA1);
+    ASSERT_TRUE(result->wifi->addr2.has_value());
+    EXPECT_EQ(result->wifi->addr2->bytes[0], 0xB1);
     EXPECT_EQ(offset, 40u); // 8 radiotap + 24 wifi + 8 LLC/SNAP
 }
 

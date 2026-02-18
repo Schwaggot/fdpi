@@ -2,9 +2,6 @@
 timestamp=1170365864256918
 captureLength=132
 wireLength=132
-ethernet.src=00:13:46:0b:22:ba
-ethernet.dst=ff:ff:ff:ff:ff:ff
-ethernet.etherType=0x0000
 wifi.type=0
 wifi.subtype=8
 wifi.toDS=false

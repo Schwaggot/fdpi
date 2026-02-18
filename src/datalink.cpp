@@ -330,11 +330,6 @@ std::expected<LinkLayerResult, Error> decodeWifi(std::span<const uint8_t> data,
             offset += kAbsMinSize;
         }
 
-        result.hasMacs = true;
-        result.dstMac = wifi.addr1;
-        if (wifi.addr2) {
-            result.srcMac = *wifi.addr2;
-        }
         result.etherType = 0;
         result.wifi = wifi;
         return result;
@@ -351,9 +346,6 @@ std::expected<LinkLayerResult, Error> decodeWifi(std::span<const uint8_t> data,
         wifi.addr3 = readMac(p + 16);
         wifi.sequenceControl = static_cast<uint16_t>(p[22] | (p[23] << 8));
 
-        result.hasMacs = true;
-        result.dstMac = wifi.addr1;  // DA
-        result.srcMac = *wifi.addr2; // SA
         result.etherType = 0;
         result.wifi = wifi;
         offset += kMgmtHeaderSize;
@@ -389,8 +381,8 @@ std::expected<LinkLayerResult, Error> decodeWifi(std::span<const uint8_t> data,
         wifi.addr4 = readMac(p + 24);
     }
 
-    // Extract MACs based on ToDS/FromDS flags
-    result.hasMacs = true;
+    // Extract DA/SA based on ToDS/FromDS flags (stored on result for potential future
+    // use, but hasMacs stays false since these are 802.11 addresses, not Ethernet)
     if (!toDS && !fromDS) {
         // IBSS: DA=addr1, SA=addr2
         result.dstMac = readMac(p + 4);

@@ -33,6 +33,8 @@ COLUMNS = [
     "frame.number", "frame.len", "frame.cap_len",
     # Ethernet
     "eth.src", "eth.dst", "eth.type",
+    # WiFi (802.11)
+    "wlan.fc.type", "wlan.fc.subtype", "wlan.sa", "wlan.da",
     # IPv4
     "ip.version", "ip.hdr_len", "ip.dsfield.dscp", "ip.dsfield.ecn",
     "ip.len", "ip.id", "ip.flags", "ip.frag_offset", "ip.ttl",
