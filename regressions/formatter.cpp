@@ -275,6 +275,14 @@ void formatTLS(std::ostringstream& ss, const fdpi::TLS& tls) {
     for (size_t i = 0; i < tls.cipherSuites.size(); ++i) {
         ss << "tls.cipherSuites[" << i << "]=" << hex16(tls.cipherSuites[i]) << "\n";
     }
+    ss << "tls.additionalRecords.count=" << tls.additionalRecords.size() << "\n";
+    for (size_t i = 0; i < tls.additionalRecords.size(); ++i) {
+        ss << "tls.additionalRecords[" << i
+           << "].contentType=" << static_cast<int>(tls.additionalRecords[i].contentType)
+           << "\n";
+        ss << "tls.additionalRecords[" << i
+           << "].version=" << hex16(tls.additionalRecords[i].version) << "\n";
+    }
 }
 
 void formatQUIC(std::ostringstream& ss, const fdpi::QUIC& quic) {

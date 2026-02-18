@@ -74,6 +74,10 @@ struct Pop3FlowState {
     bool inDataMode = false;
 };
 
+struct SmtpFlowState {
+    bool inDataMode = false;
+};
+
 struct L7StreamState {
     std::vector<uint8_t> buffer;
     AppProtocol detected{AppProtocol::Unknown};
@@ -87,6 +91,7 @@ struct PacketDecoder::Impl {
     TcpReassembler reassembler;
     ProtocolDetectionEngine detector;
     std::unordered_map<FlowId, Pop3FlowState, FlowIdHash> pop3States;
+    std::unordered_map<FlowId, SmtpFlowState, FlowIdHash> smtpStates;
     std::unordered_map<FlowId, L7StreamState, FlowIdHash> l7Streams;
 
     explicit Impl(const Config& cfg)
@@ -111,9 +116,13 @@ bool PacketDecoder::Impl::decodeL7(Packet& pkt,
     case AppProtocol::DNS: {
         // DNS over TCP has a 2-byte length prefix (RFC 1035 §4.2.2)
         if (std::holds_alternative<TCP>(pkt.layer4)) {
-            if (data.size() < 2)
+            if (data.size() < offset + 2)
                 return false;
-            offset = 2;
+            uint16_t dnsLen =
+                static_cast<uint16_t>((data[offset] << 8) | data[offset + 1]);
+            offset += 2;
+            if (data.size() < offset + dnsLen)
+                return false;
         }
         if (auto result = decodeDns(data, offset)) {
             pkt.layer7 = std::move(*result);
@@ -143,6 +152,16 @@ bool PacketDecoder::Impl::decodeL7(Packet& pkt,
     }
     case AppProtocol::TLS: {
         if (auto result = decodeTls(data, offset)) {
+            while (offset < data.size()) {
+                size_t nextOffset = offset;
+                if (auto next = decodeTls(data, nextOffset)) {
+                    result->additionalRecords.push_back(
+                        {next->contentType, next->version});
+                    offset = nextOffset;
+                } else {
+                    break;
+                }
+            }
             pkt.layer7 = std::move(*result);
             return true;
         }
@@ -184,7 +203,21 @@ bool PacketDecoder::Impl::decodeL7(Packet& pkt,
         return false;
     }
     case AppProtocol::SMTP: {
+        auto& smtpState = smtpStates[pkt.flowId];
+        if (smtpState.inDataMode) {
+            std::string_view sv(reinterpret_cast<const char*>(data.data() + offset),
+                                data.size() - offset);
+            if (sv.starts_with(".\r\n") ||
+                sv.find("\r\n.\r\n") != std::string_view::npos) {
+                smtpState.inDataMode = false;
+            }
+            return false;
+        }
         if (auto result = decodeSmtp(data, offset)) {
+            if (result->isResponse && result->replyCode == 354) {
+                auto rev = reverseFlowId(pkt.flowId);
+                smtpStates[rev].inDataMode = true;
+            }
             pkt.layer7 = std::move(*result);
             return true;
         }
@@ -525,15 +558,17 @@ std::expected<Packet, Error> PacketDecoder::decode(std::span<const uint8_t> data
             l4Protocol = fptr[0]; // real next header
             uint16_t fragOffsetField = static_cast<uint16_t>((fptr[2] << 8) | fptr[3]);
             uint16_t fragOffset = fragOffsetField >> 3; // top 13 bits
+            bool moreFragments = (fragOffsetField & 0x01) != 0;
             offset += kFragHdrSize;
 
-            if (fragOffset > 0) {
+            // Skip L4 for actual fragments (not atomic fragments)
+            if (fragOffset > 0 || moreFragments) {
                 pkt.payload.assign(data.begin() + static_cast<ptrdiff_t>(offset),
                                    data.end());
                 pkt.flowId = buildFlowId(pkt);
                 return pkt;
             }
-            // First fragment or unfragmented: continue to L4 with real protocol
+            // Atomic fragment (offset=0, MF=0): continue to L4
         }
     } else if (etherType == kEtherTypeARP) {
         auto arpResult = decodeArp(data, offset);

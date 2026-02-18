@@ -365,8 +365,14 @@ void setHTTP(Row& row, const fdpi::HTTP& http) {
 }
 
 void setTLS(Row& row, const fdpi::TLS& tls) {
-    row[colIndex("tls.record.content_type")] = decStr(tls.contentType);
-    row[colIndex("tls.record.version")] = hex16(tls.version);
+    std::string ct = decStr(tls.contentType);
+    std::string ver = hex16(tls.version);
+    for (const auto& rec : tls.additionalRecords) {
+        ct += "," + decStr(rec.contentType);
+        ver += "," + hex16(rec.version);
+    }
+    row[colIndex("tls.record.content_type")] = ct;
+    row[colIndex("tls.record.version")] = ver;
     if (tls.sni) {
         row[colIndex("tls.handshake.extensions_server_name")] = *tls.sni;
     }

@@ -12,13 +12,19 @@
 
 namespace fdpi {
 
+struct TLSRecord {
+    uint8_t contentType;
+    uint16_t version;
+};
+
 struct TLS {
-    uint8_t  contentType;
+    uint8_t contentType;
     uint16_t version;
     std::optional<std::string> sni;
     std::optional<std::vector<std::string>> alpn;
     std::optional<uint16_t> tlsVersion;
     std::vector<uint16_t> cipherSuites;
+    std::vector<TLSRecord> additionalRecords;
 };
 
 std::expected<TLS, Error> decodeTls(std::span<const uint8_t> data, size_t& offset);

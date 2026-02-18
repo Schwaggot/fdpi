@@ -485,8 +485,9 @@ buildIPv6FragmentPacket(uint8_t realNextHeader,
     return packet;
 }
 
-TEST(PacketDecoder, IPv6FragmentFirstFragmentDecodesL4) {
-    // Build a UDP header as inner payload (first fragment, offset=0, MF=1)
+TEST(PacketDecoder, IPv6FragmentFirstFragmentSkipsL4) {
+    // First fragment (offset=0, MF=1): L4 should NOT be decoded
+    // (matches tshark behavior with reassembly off)
     std::vector<uint8_t> udpHeader = {0x30, 0x39, // srcPort: 12345
                                       0x00, 0x35, // dstPort: 53
                                       0x00, 0x10, // length: 16
@@ -503,8 +504,29 @@ TEST(PacketDecoder, IPv6FragmentFirstFragmentDecodesL4) {
     ASSERT_NE(ipv6, nullptr);
     EXPECT_EQ(ipv6->nextHeader, 44); // raw header still says Fragment
 
+    // L4 should be monostate — fragments don't get L4 decoded
+    EXPECT_TRUE(std::holds_alternative<std::monostate>(result->layer4))
+        << "First IPv6 fragment should skip L4 decode";
+    // Payload should contain the fragment data
+    EXPECT_FALSE(result->payload.empty());
+}
+
+TEST(PacketDecoder, IPv6AtomicFragmentDecodesL4) {
+    // Atomic fragment (offset=0, MF=0): L4 should be decoded
+    std::vector<uint8_t> udpHeader = {0x30, 0x39, // srcPort: 12345
+                                      0x00, 0x35, // dstPort: 53
+                                      0x00, 0x10, // length: 16
+                                      0x00, 0x00, // checksum
+                                      // 8 bytes dummy payload
+                                      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+    auto data = buildIPv6FragmentPacket(17, 0, false, udpHeader);
+
+    fdpi::PacketDecoder decoder;
+    auto result = decoder.decode(data);
+    ASSERT_TRUE(result.has_value());
+
     auto* udp = std::get_if<fdpi::UDP>(&result->layer4);
-    ASSERT_NE(udp, nullptr) << "First IPv6 fragment should decode UDP";
+    ASSERT_NE(udp, nullptr) << "Atomic fragment should decode UDP";
     EXPECT_EQ(udp->srcPort, 12345);
     EXPECT_EQ(udp->dstPort, 53);
 }
