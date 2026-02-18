@@ -23,6 +23,7 @@ std::expected<Telnet, Error> decodeTelnet(const std::span<const uint8_t> data,
     Telnet msg{};
     size_t i = offset;
     const size_t end = data.size();
+    std::string currentSegment;
 
     while (i < end) {
         if (data[i] == IAC) {
@@ -35,42 +36,61 @@ std::expected<Telnet, Error> decodeTelnet(const std::span<const uint8_t> data,
 
             if (cmd == IAC) {
                 // Escaped 0xFF — literal 0xFF in data
-                msg.data += static_cast<char>(0xFF);
+                currentSegment += static_cast<char>(0xFF);
                 i += 2;
-            } else if (cmd == SB) {
-                // Sub-negotiation: FF FA <option> ... FF F0
-                // Skip until we find IAC SE
-                size_t j = i + 2;
-                while (j + 1 < end) {
-                    if (data[j] == IAC && data[j + 1] == SE) {
+            } else {
+                // Any IAC command ends the current data segment
+                if (!currentSegment.empty()) {
+                    msg.data.push_back(std::move(currentSegment));
+                    currentSegment.clear();
+                }
+
+                if (cmd == SB) {
+                    // Sub-negotiation: FF FA <option> ... FF F0
+                    // Record SB command with the option byte
+                    if (i + 2 < end) {
+                        msg.commands.push_back(TelnetCommand{SB, data[i + 2]});
+                    }
+                    // Skip until we find IAC SE
+                    size_t j = i + 2;
+                    while (j + 1 < end) {
+                        if (data[j] == IAC && data[j + 1] == SE) {
+                            break;
+                        }
+                        ++j;
+                    }
+                    if (j + 1 < end) {
+                        // Record SE command
+                        msg.commands.push_back(TelnetCommand{SE, 0});
+                        i = j + 2;
+                    } else {
+                        i = end;
+                    }
+                } else if (cmd >= WILL && cmd <= DONT) {
+                    // 3-byte command: IAC <WILL|WONT|DO|DONT> <option>
+                    if (i + 2 >= end) {
                         break;
                     }
-                    ++j;
-                }
-                // Advance past IAC SE (or to end if not found)
-                if (j + 1 < end) {
-                    i = j + 2;
+                    TelnetCommand tc{};
+                    tc.command = cmd;
+                    tc.option = data[i + 2];
+                    msg.commands.push_back(tc);
+                    i += 3;
                 } else {
-                    i = end;
+                    // 2-byte command (NOP, Data Mark, Break, IP, etc.)
+                    msg.commands.push_back(TelnetCommand{cmd, 0});
+                    i += 2;
                 }
-            } else if (cmd >= WILL && cmd <= DONT) {
-                // 3-byte command: IAC <WILL|WONT|DO|DONT> <option>
-                if (i + 2 >= end) {
-                    break;
-                }
-                TelnetCommand tc{};
-                tc.command = cmd;
-                tc.option = data[i + 2];
-                msg.commands.push_back(tc);
-                i += 3;
-            } else {
-                // 2-byte command (NOP, Data Mark, Break, etc.)
-                i += 2;
             }
         } else {
-            msg.data += static_cast<char>(data[i]);
+            currentSegment += static_cast<char>(data[i]);
             ++i;
         }
+    }
+
+    // Flush any remaining data segment
+    if (!currentSegment.empty()) {
+        msg.data.push_back(std::move(currentSegment));
     }
 
     offset = i;

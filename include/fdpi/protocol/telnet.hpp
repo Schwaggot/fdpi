@@ -17,7 +17,7 @@ struct TelnetCommand {
 };
 
 struct Telnet {
-    std::string data;                    // Plain text content
+    std::vector<std::string> data;       // Plain text segments between commands
     std::vector<TelnetCommand> commands; // IAC command sequences
 };
 

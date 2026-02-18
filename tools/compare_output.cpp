@@ -491,7 +491,50 @@ void setTelnet(Row& row, const fdpi::Telnet& telnet) {
         row[colIndex("telnet.cmd")] = cmds;
     }
     if (!telnet.data.empty()) {
-        row[colIndex("telnet.data")] = telnet.data;
+        // tshark splits telnet data into sub-segments at line boundaries:
+        //   \r\0  → outputs "\r" as a segment (NUL consumed)
+        //   \r\n  → includes "\r\n" at end of segment, then starts new one
+        // Segments are comma-separated and \r/\n are escaped.
+        std::vector<std::string> segments;
+        for (const auto& seg : telnet.data) {
+            std::string cur;
+            for (size_t j = 0; j < seg.size(); ++j) {
+                char c = seg[j];
+                if (c == '\r') {
+                    if (j + 1 < seg.size() && seg[j + 1] == '\0') {
+                        // \r\0 → emit "\r" as its own segment, skip NUL
+                        cur += "\\r";
+                        segments.push_back(std::move(cur));
+                        cur.clear();
+                        ++j; // skip NUL
+                    } else if (j + 1 < seg.size() && seg[j + 1] == '\n') {
+                        // \r\n → include at end of segment, then split
+                        cur += "\\r\\n";
+                        segments.push_back(std::move(cur));
+                        cur.clear();
+                        ++j; // skip \n
+                    } else {
+                        cur += "\\r";
+                    }
+                } else if (c == '\n') {
+                    cur += "\\n";
+                } else if (c != '\0') {
+                    cur += c;
+                }
+            }
+            if (!cur.empty()) {
+                segments.push_back(std::move(cur));
+            }
+        }
+        if (!segments.empty()) {
+            std::string result;
+            for (size_t i = 0; i < segments.size(); ++i) {
+                if (i > 0)
+                    result += ',';
+                result += segments[i];
+            }
+            row[colIndex("telnet.data")] = result;
+        }
     }
 }
 
