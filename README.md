@@ -19,7 +19,7 @@ FDPI operates purely on byte buffers — it does not capture packets itself. The
     - Tunnel: GRE, VxLAN, GTP
     - L7: BGP, DHCP, DHCPv6, DNS, DTLS, Dropbox LAN Sync, FTP, HTTP/1.x (+ OCSP), IMAP, IMF, LDAP, LLMNR,
       mDNS, NBDGM, NBNS, NTP, POP3, QUIC, RDP, RTCP, RTMP, SMB (v1/v2/v3), SMTP, SNMP (v1/v2c/v3), SSDP,
-      SrvLoc, SSH, STUN, TLS (SNI/ALPN extraction)
+      SrvLoc, SSH, STUN, Telnet, TFTP, TLS (SNI/ALPN extraction)
 - IP defragmentation and TCP stream reassembly
 - Bidirectional flow tracking with timeout-based cleanup
 - Application-layer protocol detection (port hints + payload DPI)

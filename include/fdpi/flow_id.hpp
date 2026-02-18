@@ -38,15 +38,17 @@ enum class AppProtocol : uint8_t {
     SSH,
     SrvLoc,
     STUN,
+    Telnet,
+    TFTP,
     TLS,
 };
 
 struct FlowId {
     IpAddress srcIp;
     IpAddress dstIp;
-    uint16_t  srcPort{0};
-    uint16_t  dstPort{0};
-    uint8_t   protocol{0};
+    uint16_t srcPort{0};
+    uint16_t dstPort{0};
+    uint8_t protocol{0};
 
     bool operator==(const FlowId&) const = default;
 };

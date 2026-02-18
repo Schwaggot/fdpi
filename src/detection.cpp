@@ -168,6 +168,15 @@ struct ProtocolDetectionEngine::Impl {
             }
         }
 
+        // Telnet: TCP port 23
+        if (std::holds_alternative<TCP>(packet.layer4)) {
+            if (srcPort == 23 || dstPort == 23) {
+                if (payload.size() >= 1) {
+                    return AppProtocol::Telnet;
+                }
+            }
+        }
+
         // SMTP: TCP ports 25, 587
         if (std::holds_alternative<TCP>(packet.layer4)) {
             if (srcPort == 25 || dstPort == 25 || srcPort == 587 || dstPort == 587) {
@@ -373,6 +382,18 @@ struct ProtocolDetectionEngine::Impl {
                     uint8_t msgType = payload[0];
                     if (msgType >= 1 && msgType <= 13) {
                         return AppProtocol::DHCPv6;
+                    }
+                }
+            }
+        }
+
+        // TFTP: UDP port 69
+        if (std::holds_alternative<UDP>(packet.layer4)) {
+            if (srcPort == 69 || dstPort == 69) {
+                if (payload.size() >= 4) {
+                    const uint16_t opcode = (payload[0] << 8) | payload[1];
+                    if (opcode >= 1 && opcode <= 5) {
+                        return AppProtocol::TFTP;
                     }
                 }
             }

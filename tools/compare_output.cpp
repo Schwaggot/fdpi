@@ -153,6 +153,17 @@ const std::vector<std::string> COLUMNS = {
     // RDP/TPKT
     "tpkt.version",
     "tpkt.length",
+    // Telnet
+    "telnet.cmd",
+    "telnet.data",
+    // TFTP
+    "tftp.opcode",
+    "tftp.source_file",
+    "tftp.destination_file",
+    "tftp.type",
+    "tftp.block",
+    "tftp.error.code",
+    "tftp.error.message",
     // STUN
     "stun.type",
     "stun.length",
@@ -468,6 +479,32 @@ void setSTUN(Row& row, const fdpi::STUN& stun) {
     row[colIndex("stun.cookie")] = hex32(stun.magicCookie);
 }
 
+void setTelnet(Row& row, const fdpi::Telnet& telnet) {
+    if (!telnet.commands.empty()) {
+        // Report first command byte (matches tshark telnet.cmd)
+        row[colIndex("telnet.cmd")] = decStr(telnet.commands[0].command);
+    }
+    if (!telnet.data.empty()) {
+        row[colIndex("telnet.data")] = telnet.data;
+    }
+}
+
+void setTFTP(Row& row, const fdpi::TFTP& tftp) {
+    row[colIndex("tftp.opcode")] = decStr(tftp.opcode);
+    // tshark uses tftp.type for the opcode text, we output the numeric opcode
+    row[colIndex("tftp.type")] = decStr(tftp.opcode);
+    if (tftp.opcode == 1) { // RRQ
+        row[colIndex("tftp.source_file")] = tftp.filename;
+    } else if (tftp.opcode == 2) { // WRQ
+        row[colIndex("tftp.destination_file")] = tftp.filename;
+    } else if (tftp.opcode == 3 || tftp.opcode == 4) { // DATA or ACK
+        row[colIndex("tftp.block")] = decStr(tftp.blockNumber);
+    } else if (tftp.opcode == 5) { // ERROR
+        row[colIndex("tftp.error.code")] = decStr(tftp.errorCode);
+        row[colIndex("tftp.error.message")] = tftp.errorMessage;
+    }
+}
+
 void setDTLS(Row& row, const fdpi::DTLS& dtls) {
     row[colIndex("dtls.record.content_type")] = decStr(dtls.contentType);
     row[colIndex("dtls.record.version")] = hex16(dtls.version);
@@ -566,6 +603,10 @@ void setLayer7(Row& row, const decltype(fdpi::Packet::layer7)& l7) {
                 setLDAP(row, v);
             } else if constexpr (std::is_same_v<T, fdpi::STUN>) {
                 setSTUN(row, v);
+            } else if constexpr (std::is_same_v<T, fdpi::Telnet>) {
+                setTelnet(row, v);
+            } else if constexpr (std::is_same_v<T, fdpi::TFTP>) {
+                setTFTP(row, v);
             } else if constexpr (std::is_same_v<T, fdpi::DTLS>) {
                 setDTLS(row, v);
             } else if constexpr (std::is_same_v<T, fdpi::RTCP>) {

@@ -650,6 +650,8 @@ void formatLayer7(std::ostringstream& ss,
                                      fdpi::RTMP,
                                      fdpi::IMF,
                                      fdpi::STUN,
+                                     fdpi::Telnet,
+                                     fdpi::TFTP,
                                      fdpi::DTLS,
                                      fdpi::RTCP,
                                      fdpi::DbLanSyncDisc>& layer7) {
@@ -706,6 +708,24 @@ void formatLayer7(std::ostringstream& ss,
                 ss << "layer7=STUN\n";
                 ss << "stun.type=" << v.type << "\n";
                 ss << "stun.isRequest=" << v.isRequest << "\n";
+            } else if constexpr (std::is_same_v<T, fdpi::Telnet>) {
+                ss << "layer7=Telnet\n";
+                ss << "telnet.dataSize=" << v.data.size() << "\n";
+                ss << "telnet.commands.count=" << v.commands.size() << "\n";
+            } else if constexpr (std::is_same_v<T, fdpi::TFTP>) {
+                ss << "layer7=TFTP\n";
+                ss << "tftp.opcode=" << v.opcode << "\n";
+                if (!v.filename.empty()) {
+                    ss << "tftp.filename=" << v.filename << "\n";
+                    ss << "tftp.mode=" << v.mode << "\n";
+                }
+                if (v.opcode == 3 || v.opcode == 4) {
+                    ss << "tftp.blockNumber=" << v.blockNumber << "\n";
+                }
+                if (v.opcode == 5) {
+                    ss << "tftp.errorCode=" << v.errorCode << "\n";
+                    ss << "tftp.errorMessage=" << v.errorMessage << "\n";
+                }
             } else if constexpr (std::is_same_v<T, fdpi::DTLS>) {
                 ss << "layer7=DTLS\n";
                 ss << "dtls.contentType=" << static_cast<int>(v.contentType) << "\n";

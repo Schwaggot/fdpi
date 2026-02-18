@@ -687,6 +687,18 @@ std::expected<Packet, Error> PacketDecoder::decode(std::span<const uint8_t> data
                 }
                 break;
             }
+            case AppProtocol::Telnet: {
+                if (auto result = decodeTelnet(payloadSpan, l7Offset)) {
+                    pkt.layer7 = std::move(*result);
+                }
+                break;
+            }
+            case AppProtocol::TFTP: {
+                if (auto result = decodeTftp(payloadSpan, l7Offset)) {
+                    pkt.layer7 = std::move(*result);
+                }
+                break;
+            }
             case AppProtocol::DTLS: {
                 if (auto result = decodeDtls(payloadSpan, l7Offset)) {
                     pkt.layer7 = std::move(*result);

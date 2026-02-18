@@ -49,6 +49,8 @@
 #include <fdpi/protocol/ssh.hpp>
 #include <fdpi/protocol/stun.hpp>
 #include <fdpi/protocol/tcp.hpp>
+#include <fdpi/protocol/telnet.hpp>
+#include <fdpi/protocol/tftp.hpp>
 #include <fdpi/protocol/tls.hpp>
 #include <fdpi/protocol/udp.hpp>
 #include <fdpi/protocol/wifi.hpp>
@@ -94,6 +96,8 @@ struct Packet {
                  RTMP,
                  IMF,
                  STUN,
+                 Telnet,
+                 TFTP,
                  DTLS,
                  RTCP,
                  DbLanSyncDisc>

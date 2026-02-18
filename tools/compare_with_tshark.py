@@ -97,6 +97,11 @@ COLUMNS = [
     "ldap.messageID",
     # RDP/TPKT
     "tpkt.version", "tpkt.length",
+    # Telnet
+    "telnet.cmd", "telnet.data",
+    # TFTP
+    "tftp.opcode", "tftp.source_file", "tftp.destination_file",
+    "tftp.type", "tftp.block", "tftp.error.code", "tftp.error.message",
     # STUN
     "stun.type", "stun.length", "stun.cookie",
     # DTLS
