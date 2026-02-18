@@ -162,9 +162,11 @@ def baseline_path(pcap_path):
 def build_tshark_cmd(pcap_path):
     """Build the tshark command to extract fields."""
     cmd = ["tshark", "-r", str(pcap_path), "-T", "fields"]
-    # Disable TCP reassembly / desegmentation so tshark reports per-packet
-    # L7 fields (matching fdpi's per-packet mode).
+    # Disable reassembly so tshark reports per-packet fields
+    # (matching fdpi's per-packet mode with reassembly off).
     cmd.extend(["-o", "tcp.desegment_tcp_streams:FALSE"])
+    cmd.extend(["-o", "ip.defragment:FALSE"])
+    cmd.extend(["-o", "ipv6.defragment:FALSE"])
     # Disable tshark's rtcp_udp heuristic dissector — it aggressively
     # pattern-matches on 2 bytes of random UDP payloads and produces false
     # positives (every match is flagged [Malformed Packet]).
@@ -419,15 +421,37 @@ def compare_pcap(pcap_path, verbose=False):
                 if tv6 or fv6:
                     continue
 
+            # HTTP request/response field asymmetry:
+            # - tshark leaks request URI onto response packets (flow tracking)
+            # - fdpi/tshark disagree on http.request.version for responses
+            # Skip request-only fields when a response code is present.
+            if col in ("http.request.uri", "http.request.version"):
+                t_resp = trow.get("http.response.code", "").strip()
+                f_resp = frow.get("http.response.code", "").strip()
+                if t_resp or f_resp:
+                    continue
+
+            # tshark carries tftp.source_file / tftp.destination_file from
+            # the initial RRQ/WRQ onto all subsequent DATA/ACK packets in
+            # the same transfer. fdpi only reports it on the RRQ/WRQ.
+            if col in ("tftp.source_file", "tftp.destination_file"):
+                if not fnorm and tnorm:
+                    opcode = frow.get("tftp.opcode", "").strip()
+                    if opcode not in ("1", "2"):
+                        continue
+
             total_fields += 1
             field_stats[col]["total"] += 1
 
             # Multi-value normalization: tshark may report comma-separated
-            # values for encapsulated protocols (e.g., "17,6" for outer UDP +
-            # inner TCP). fdpi only reports the outer value. Compare against
-            # the first comma-delimited element from tshark.
+            # values for tunneled protocols (e.g., VxLAN "110,60" for
+            # outer+inner). fdpi reports the innermost value. Check if
+            # fdpi's value matches any of the comma-delimited elements.
             if tnorm != fnorm and ',' in tval and ',' not in fval:
-                tnorm = normalize_value(col, tval.split(',')[0].strip())
+                parts = [normalize_value(col, p.strip())
+                         for p in tval.split(',')]
+                if fnorm in parts:
+                    tnorm = fnorm
 
             if tnorm == fnorm:
                 matches += 1
